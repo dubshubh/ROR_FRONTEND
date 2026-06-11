@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { LayoutDashboard, LogOut, Shield, Users } from "lucide-react";
 import { SiteBrand } from "@/components/layout/site-brand";
@@ -12,6 +13,12 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { logout, requireToken } = useAuth();
   const { data } = useSiteSettings();
+  const pathname = usePathname();
+
+  const navItems = [
+    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/riders", label: "Roster", icon: Users }
+  ];
 
   useEffect(() => {
     requireToken();
@@ -33,12 +40,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="grid gap-3">
-          <Link className="rebel-hover flex items-center gap-3 border border-transparent px-4 py-4 font-display text-xl uppercase text-[#ffdad8] hover:border-primary hover:bg-primary hover:text-primary-foreground" href="/admin/dashboard">
-            <LayoutDashboard className="h-4 w-4" /> Dashboard
-          </Link>
-          <Link className="rebel-hover flex items-center gap-3 border border-transparent px-4 py-4 font-display text-xl uppercase text-[#ffdad8] hover:border-primary hover:bg-primary hover:text-primary-foreground" href="/admin/riders">
-            <Users className="h-4 w-4" /> Roster
-          </Link>
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname.startsWith(`${href}/`);
+
+            return (
+              <Link
+                key={href}
+                className={`rebel-hover flex items-center gap-3 border px-4 py-4 font-display text-xl uppercase ${
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-transparent text-[#ffdad8] hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                }`}
+                href={href}
+              >
+                <Icon className="h-4 w-4" /> {label}
+              </Link>
+            );
+          })}
         </nav>
         <Button className="absolute bottom-5 left-5 right-5" variant="outline" onClick={logout}>
           <LogOut className="h-4 w-4" /> Logout
@@ -52,6 +70,26 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
+          <nav className="grid grid-cols-2 border-t border-[#5b403f] px-3 py-2">
+            {navItems.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname === href || pathname.startsWith(`${href}/`);
+
+              return (
+                <Link
+                  key={href}
+                  className={`flex min-h-11 items-center justify-center gap-2 border px-3 py-2 font-display text-base uppercase ${
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-transparent text-[#ffdad8]"
+                  }`}
+                  href={href}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </header>
         <div className="mx-auto w-full max-w-7xl p-4 sm:p-8">{children}</div>
         <div className="md:pl-0">
