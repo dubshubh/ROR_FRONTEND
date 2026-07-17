@@ -36,7 +36,7 @@ export default function ContactPage() {
             </div>
             <div className="flex items-center gap-3">
               <MapPin className="h-4 w-4 text-[#d91b1b]" />
-              <span>Mumbai • Pune • Goa ride circuit</span>
+              <span>Dehradun • Pune • Goa ride circuit</span>
             </div>
             <p className="leading-7">
               Whether you are a first-time rider or a seasoned road explorer, the team is happy to guide you into the next event.

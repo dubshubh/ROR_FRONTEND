@@ -305,7 +305,7 @@ export default async function HomePage() {
               </div>
               <div className="flex items-center gap-3 text-sm text-[#e8d9c9]">
                 <MapPin className="h-4 w-4 text-[#d91b1b]" />
-                <span>Based in Mumbai • Travel across the city and coast</span>
+                <span>Based in Dehradun • Travel across the city and coast</span>
               </div>
               <Button asChild className="mt-2 w-full">
                 <Link href="/contact">Open contact page</Link>
