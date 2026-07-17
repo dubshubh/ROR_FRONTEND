@@ -255,21 +255,18 @@ export default async function HomePage() {
               Built together. Tested on the road.
             </p>
             <Button asChild variant="outline">
-              <Link href="/contact">Become a partner <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link href="/contact#partner">Become a partner <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
         </div>
       </section>
 
       <section id="gallery" className="mx-auto max-w-6xl px-4 py-16">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
           <div>
             <p className="font-mono-label text-sm uppercase tracking-[0.25em] text-[#d91b1b]">Photography</p>
             <h2 className="mt-2 font-display text-3xl text-[#e8d9c9] sm:text-4xl">Moments captured from the road</h2>
           </div>
-          <Button asChild variant="outline">
-            <Link href="/contact">Book a ride</Link>
-          </Button>
         </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-3">

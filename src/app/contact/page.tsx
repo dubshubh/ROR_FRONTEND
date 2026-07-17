@@ -1,11 +1,35 @@
+"use client";
+
 import Link from "next/link";
-import { Mail, MapPin, PhoneCall, Send } from "lucide-react";
+import { FormEvent } from "react";
+import { Handshake, Mail, MapPin, PhoneCall, Send } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ContactPage() {
+  function sendPartnerEnquiry(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const brandName = String(form.get("brandName") ?? "").trim();
+    const lines = [
+      `Brand / company: ${brandName}`,
+      `Contact person: ${form.get("contactName")}`,
+      `Email: ${form.get("email")}`,
+      `Phone: ${form.get("phone")}`,
+      `Website / social: ${form.get("website") || "Not provided"}`,
+      `Partnership type: ${form.get("category")}`,
+      "",
+      "Proposal:",
+      String(form.get("message") ?? "")
+    ];
+    window.location.href = `mailto:support@rebelsonroads.com?subject=${encodeURIComponent(`Partnership enquiry - ${brandName}`)}&body=${encodeURIComponent(lines.join("\n"))}`;
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <PublicHeader />
@@ -60,6 +84,26 @@ export default function ContactPage() {
             </Button>
           </CardContent>
         </Card>
+      </section>
+
+      <section id="partner" className="scroll-mt-24 border-y border-red-900 bg-[#080808]">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <div className="mb-8 max-w-2xl">
+            <div className="flex items-center gap-2 text-[#d91b1b]"><Handshake className="h-5 w-5" /><p className="font-mono-label text-sm uppercase tracking-[0.25em]">Partner with us</p></div>
+            <h2 className="mt-3 font-display text-3xl text-[#e8d9c9] sm:text-4xl">Tell us about your brand</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">Complete the details below to prepare an email for our partnership team.</p>
+          </div>
+          <form className="grid gap-4 border border-red-900 bg-[#0f0f0f] p-5 sm:grid-cols-2 sm:p-7" onSubmit={sendPartnerEnquiry}>
+            <label className="grid gap-1 text-sm">Brand or company name<Input name="brandName" required maxLength={120} /></label>
+            <label className="grid gap-1 text-sm">Contact person<Input name="contactName" required maxLength={100} /></label>
+            <label className="grid gap-1 text-sm">Business email<Input name="email" type="email" required /></label>
+            <label className="grid gap-1 text-sm">Phone number<Input name="phone" type="tel" required maxLength={20} /></label>
+            <label className="grid gap-1 text-sm">Website or social profile<Input name="website" type="url" placeholder="https://" /></label>
+            <label className="grid gap-1 text-sm">Partnership type<Select name="category" required defaultValue=""><option value="" disabled>Select a category</option><option>Riding gear</option><option>Motorcycle accessories</option><option>Hospitality or venue</option><option>Event sponsorship</option><option>Media collaboration</option><option>Other</option></Select></label>
+            <label className="grid gap-1 text-sm sm:col-span-2">Partnership proposal<Textarea name="message" required rows={6} maxLength={2000} placeholder="Describe your brand, proposed collaboration, and what you would like to offer." /></label>
+            <Button className="sm:col-span-2 sm:justify-self-start" type="submit"><Mail className="h-4 w-4" /> Email partnership team</Button>
+          </form>
+        </div>
       </section>
 
       <SiteFooter />
