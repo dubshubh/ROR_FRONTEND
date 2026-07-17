@@ -47,7 +47,7 @@ export default function RiderDetailPage() {
       <div className="mb-6 flex flex-col gap-3 border-b-2 border-primary pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-3">
-            <h1 className="font-display text-5xl text-[#ffb3b1]">{rider.fullName}</h1>
+            <h1 className="break-words font-display text-4xl text-[#ffb3b1] sm:text-5xl">{rider.fullName}</h1>
             <StatusBadge status={rider.status} />
           </div>
           <p className="text-sm text-muted-foreground">{rider.email} · {rider.phone}</p>

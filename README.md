@@ -32,7 +32,7 @@ Copy-Item .env.example .env.local
 Update `.env.local`:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
 NEXT_PUBLIC_WHATSAPP_GROUP_URL=https://chat.whatsapp.com/your-invite-code
 NEXT_PUBLIC_INSTAGRAM_URL=https://www.instagram.com/rebelsonroads?igsh=anMyNTkwYzNwYjY0
 ```
@@ -90,7 +90,7 @@ The backend API must be running before registration, admin login, rider manageme
 Expected local backend URL:
 
 ```text
-http://localhost:5000/api
+http://localhost:8000/api
 ```
 
 ## Build

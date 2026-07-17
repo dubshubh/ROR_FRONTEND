@@ -45,7 +45,7 @@ export default function RidersPage() {
       <div className="motion-page">
       <div className="mb-8 flex flex-col gap-4 border-b-2 border-primary pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-5xl text-[#ffb3b1]">Rider Registry</h1>
+          <h1 className="font-display text-4xl text-[#ffb3b1] sm:text-5xl">Rider Registry</h1>
           <p className="mt-2 text-lg text-[#ffdad8]">Manage member status, bike assignments, and chapter credentials.</p>
           <p className="mt-3 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
             Showing {data?.riders.length ?? 0} of {data?.meta.total ?? 0} riders

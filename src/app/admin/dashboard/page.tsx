@@ -25,7 +25,7 @@ export default function DashboardPage() {
       <div className="relative mb-8 border-b-2 border-primary pb-5">
         <div className="absolute left-0 top-0 -z-0 font-display text-8xl text-white/[0.035] sm:text-[10rem]">REBELS</div>
         <div className="relative">
-          <h1 className="font-display text-5xl text-foreground sm:text-7xl">Road Captain Portal</h1>
+          <h1 className="font-display text-4xl text-foreground sm:text-7xl">Road Captain Portal</h1>
           <div className="rebel-pulse mt-2 h-2 w-32 bg-primary" />
           <p className="mt-4 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">Registration review summary and command actions.</p>
         </div>

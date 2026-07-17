@@ -24,7 +24,7 @@ export function SiteFooter() {
             <p className="mt-1 text-[10px] text-[#d91b1b]">Official club operations and rider management</p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 md:justify-end">
+          <div className="flex flex-wrap items-center justify-center gap-3 md:justify-end">
             {socialLinks.length > 0 ? (
               socialLinks.map(({ label, href }) => {
                 const Icon = socialIcons[label];

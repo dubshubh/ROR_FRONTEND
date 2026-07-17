@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Handshake, ImageIcon, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Bike, CalendarDays, Handshake, ImageIcon, MapPinned, Pencil, Plus, Trash2, X } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -15,9 +15,11 @@ import { getAdminContent, removeContent, saveContent } from "@/services/content.
 import { ContentItem, ContentKind } from "@/types/content";
 
 const groups: { kind: ContentKind; label: string; icon: typeof CalendarDays }[] = [
-  { kind: "ride", label: "Rides & Events", icon: CalendarDays },
-  { kind: "photo", label: "Event Photos", icon: ImageIcon },
-  { kind: "brand", label: "Brands", icon: Handshake }
+  { kind: "event", label: "Events", icon: CalendarDays },
+  { kind: "ride", label: "Rides", icon: Bike },
+  { kind: "brand", label: "Brand Partners", icon: Handshake },
+  { kind: "photo", label: "Photography", icon: ImageIcon },
+  { kind: "intercity", label: "Intercity Rides", icon: MapPinned }
 ];
 
 export default function ContentPage() {
@@ -36,7 +38,7 @@ export default function ContentPage() {
     <AdminShell>
       <div className="motion-page">
         <div className="mb-7 border-b-2 border-primary pb-5">
-          <h1 className="font-display text-5xl text-[#ffb3b1]">Site Content</h1>
+          <h1 className="font-display text-4xl text-[#ffb3b1] sm:text-5xl">Site Content</h1>
           <p className="mt-2 text-muted-foreground">Manage rides, event photography, and partner brands shown on the public site.</p>
         </div>
         <div className="grid gap-8">
@@ -52,7 +54,7 @@ export default function ContentPage() {
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {items.map((item) => (
                       <Card key={item._id} className="overflow-hidden">
-                        {item.image ? <img src={item.image.url} alt={item.title} className="h-36 w-full object-cover" /> : null}
+                        {(item.images?.[0] ?? item.image) ? <img src={(item.images?.[0] ?? item.image)!.url} alt={item.title} className="h-36 w-full object-cover" /> : null}
                         <div className="p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div><h3 className="font-display text-xl text-[#ffdad8]">{item.title}</h3><p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description || item.category}</p></div>
@@ -87,15 +89,19 @@ function ContentEditor({ kind, item, onClose, onSaved }: { kind: ContentKind; it
     mutation.mutate(new FormData(event.currentTarget));
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <form onSubmit={submit} className="max-h-[90vh] w-full max-w-xl overflow-y-auto border-2 border-primary bg-[#151414] p-5">
-        <div className="mb-5 flex items-center justify-between"><h2 className="font-display text-3xl text-[#ffb3b1]">{item ? "Edit" : "Add"} {kind}</h2><Button type="button" size="icon" variant="outline" title="Close" onClick={onClose}><X className="h-4 w-4" /></Button></div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <form onSubmit={submit} className="max-h-[94vh] w-full max-w-xl overflow-y-auto border-2 border-primary bg-[#151414] p-4 sm:max-h-[90vh] sm:p-5">
+        <div className="mb-5 flex items-center justify-between gap-3"><h2 className="font-display text-2xl text-[#ffb3b1] sm:text-3xl">{item ? "Edit" : "Add"} {kind}</h2><Button type="button" size="icon" variant="outline" title="Close" onClick={onClose}><X className="h-4 w-4" /></Button></div>
         <div className="grid gap-4">
           <label className="grid gap-1 text-sm">Title<Input name="title" required maxLength={120} defaultValue={item?.title} /></label>
           <label className="grid gap-1 text-sm">Description<Textarea name="description" rows={4} maxLength={1000} defaultValue={item?.description} /></label>
-          {kind === "ride" ? <><label className="grid gap-1 text-sm">Date<Input name="date" type="date" defaultValue={item?.date?.slice(0, 10)} /></label><label className="grid gap-1 text-sm">Location<Input name="location" defaultValue={item?.location} /></label><label className="grid gap-1 text-sm">Status<Select name="status" defaultValue={item?.status ?? "upcoming"}><option value="upcoming">Upcoming</option><option value="completed">Completed</option></Select></label></> : null}
+          {kind === "event" || kind === "ride" || kind === "intercity" ? <><div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-1 text-sm">Start date<Input name="date" type="date" defaultValue={item?.date?.slice(0, 10)} /></label><label className="grid gap-1 text-sm">End date<Input name="endDate" type="date" defaultValue={item?.endDate?.slice(0, 10)} /></label></div><label className="grid gap-1 text-sm">Status<Select name="status" defaultValue={item?.status ?? "upcoming"}><option value="upcoming">Upcoming</option><option value="completed">Completed</option></Select></label></> : null}
+          {kind === "event" ? <label className="grid gap-1 text-sm">Venue / location<Input name="location" defaultValue={item?.location} /></label> : null}
+          {kind === "ride" || kind === "intercity" ? <div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-1 text-sm">Ride starts from<Input name="startLocation" required defaultValue={item?.startLocation} /></label><label className="grid gap-1 text-sm">Destination<Input name="destination" required defaultValue={item?.destination} /></label></div> : null}
           {kind === "brand" ? <label className="grid gap-1 text-sm">Category<Input name="category" required defaultValue={item?.category} placeholder="Helmets & riding protection" /></label> : null}
-          <label className="grid gap-1 text-sm">{item?.image ? "Replace image" : "Image"}<Input name="image" type="file" accept="image/jpeg,image/png,image/webp" required={kind === "photo" && !item?.image} /></label>
+          {kind === "photo" ? <label className="grid gap-1 text-sm">Video URL (YouTube, Instagram, etc.)<Input name="videoUrl" type="url" defaultValue={item?.videoUrl} placeholder="https://" /></label> : null}
+          <label className="grid gap-1 text-sm">{item?.images?.length || item?.image ? "Replace all images (up to 8)" : "Images (up to 8)"}<Input name="images" type="file" multiple accept="image/jpeg,image/png,image/webp" /></label>
+          {kind === "photo" ? <label className="grid gap-1 text-sm">{item?.videos?.length ? "Replace uploaded videos (up to 2, 25 MB each)" : "Upload videos (up to 2, 25 MB each)"}<Input name="videos" type="file" multiple accept="video/mp4,video/webm" /></label> : null}
           <label className="grid gap-1 text-sm">Display order<Input name="sortOrder" type="number" defaultValue={item?.sortOrder ?? 0} /></label>
           <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Saving..." : item ? "Update" : "Add item"}</Button>
         </div>
