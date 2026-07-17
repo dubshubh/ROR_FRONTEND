@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { LayoutDashboard, LogOut, Shield, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelsTopLeft, Shield, Users } from "lucide-react";
 import { SiteBrand } from "@/components/layout/site-brand";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/riders", label: "Roster", icon: Users }
+    { href: "/admin/riders", label: "Roster", icon: Users },
+    { href: "/admin/content", label: "Content", icon: PanelsTopLeft }
   ];
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
-          <nav className="grid grid-cols-2 border-t border-[#5b403f] px-3 py-2">
+          <nav className="grid grid-cols-3 border-t border-[#5b403f] px-3 py-2">
             {navItems.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(`${href}/`);
 

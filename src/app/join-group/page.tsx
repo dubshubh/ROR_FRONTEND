@@ -60,10 +60,10 @@ export default function JoinGroupPage() {
   return (
     <main className="min-h-screen bg-background">
       <PublicHeader />
-      <section className="motion-page border-b-2 border-primary bg-[#101010]">
+      <section className="motion-page border-b-2 border-red-600 bg-[#0a0a0a]">
         <div className="mx-auto max-w-6xl px-4 py-6">
-          <h1 className="font-display text-4xl text-[#ffb3b1] sm:text-6xl">Rider Registration</h1>
-          <p className="mt-3 max-w-2xl text-sm text-[#ffdad8]">Fuel your passion. Join the elite brotherhood of Rebels On Roads. Complete the form below to begin your journey.</p>
+          <h1 className="font-display text-4xl text-[#d91b1b] sm:text-6xl">Rider Registration</h1>
+          <p className="mt-3 max-w-2xl text-sm text-[#e8d9c9]">Fuel your passion. Join the elite brotherhood of Rebels On Roads. Complete the form below to begin your journey.</p>
         </div>
       </section>
 
@@ -200,7 +200,7 @@ export default function JoinGroupPage() {
             {mutation.isPending ? "Submitting" : "Submit Registration"}
           </Button>
         </div>
-        <div className="motion-rise py-10 font-display text-6xl leading-none text-white/10 sm:text-8xl">
+        <div className="motion-rise py-10 font-display text-6xl leading-none text-white/5 sm:text-8xl">
           Respect<br />& Ride
         </div>
       </form>
