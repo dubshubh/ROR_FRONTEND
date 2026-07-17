@@ -1,7 +1,12 @@
 import axios from "axios";
 
+const defaultApiUrl =
+  process.env.NODE_ENV === "production"
+    ? "https://ror-backend-1.onrender.com/api"
+    : "http://localhost:8000/api";
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api"
+  baseURL: process.env.NEXT_PUBLIC_API_URL?.trim() || defaultApiUrl
 });
 
 api.interceptors.request.use((config) => {
