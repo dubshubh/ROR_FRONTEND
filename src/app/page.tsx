@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicContent } from "@/services/content.service";
+import { getSiteSettings } from "@/services/settings.service";
 
 const upcomingEvents = [
   {
@@ -63,8 +64,15 @@ export default async function HomePage() {
   let pastRides = completedEvents;
   let partners = brandPartners;
   let photos = galleryShots;
+  let commandCenter = {
+    launchTitle: "Sunrise Ride to Alibaug",
+    launchDetails: "Ride start: 5:30 AM · Meet point: Gateway of the city",
+    membersCount: "120+",
+    runsCount: "35"
+  };
   try {
-    const content = await getPublicContent();
+    const [content, settings] = await Promise.all([getPublicContent(), getSiteSettings()]);
+    if (settings.commandCenter) commandCenter = settings.commandCenter;
     const upcoming = content.rides.filter((item) => item.status === "upcoming");
     const completed = content.rides.filter((item) => item.status === "completed");
     if (upcoming.length) rides = upcoming.map((item) => ({
@@ -120,17 +128,17 @@ export default async function HomePage() {
             <div className="mt-6 space-y-4">
               <div className="rounded-2xl border border-red-900 bg-[#1a1a1a] p-4">
                 <p className="text-sm text-[#e8d9c9]">Next launch</p>
-                <p className="mt-1 font-display text-2xl text-[#d91b1b]">Sunrise ride to Alibaug</p>
-                <p className="mt-2 text-sm text-muted-foreground">Ride start: 5:30 AM • Meet point: Gateway of the city</p>
+                <p className="mt-1 font-display text-2xl text-[#d91b1b]">{commandCenter.launchTitle}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{commandCenter.launchDetails}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-red-900 bg-[#1a1a1a] p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-[#d91b1b]">Members</p>
-                  <p className="mt-2 font-display text-3xl text-[#e8d9c9]">120+</p>
+                  <p className="mt-2 font-display text-3xl text-[#e8d9c9]">{commandCenter.membersCount}</p>
                 </div>
                 <div className="rounded-2xl border border-red-900 bg-[#1a1a1a] p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-[#d91b1b]">Runs</p>
-                  <p className="mt-2 font-display text-3xl text-[#e8d9c9]">35</p>
+                  <p className="mt-2 font-display text-3xl text-[#e8d9c9]">{commandCenter.runsCount}</p>
                 </div>
               </div>
             </div>

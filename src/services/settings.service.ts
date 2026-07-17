@@ -12,3 +12,8 @@ export async function updateSiteLogo(file: File) {
   const { data } = await api.patch("/admin/settings/logo", formData);
   return data.data as SiteSettings;
 }
+
+export async function updateCommandCenter(commandCenter: SiteSettings["commandCenter"]) {
+  const { data } = await api.patch("/admin/settings/command-center", commandCenter);
+  return data.data as SiteSettings;
+}

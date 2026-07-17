@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Clock, Users, XCircle } from "lucide-react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { LogoUploader } from "@/components/admin/logo-uploader";
+import { CommandCenterEditor } from "@/components/admin/command-center-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import { getDashboardStats } from "@/services/rider.service";
@@ -49,7 +50,10 @@ export default function DashboardPage() {
         <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffb3b1]">Syncing command center...</div>
       ) : null}
       <div className="motion-rise mt-5">
-        <LogoUploader logo={settings?.logo} />
+        <div className="grid gap-5 lg:grid-cols-2">
+          <CommandCenterEditor values={settings?.commandCenter} />
+          <LogoUploader logo={settings?.logo} />
+        </div>
       </div>
       </div>
     </AdminShell>

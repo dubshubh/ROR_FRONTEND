@@ -5,4 +5,10 @@ export type SiteLogo = {
 
 export type SiteSettings = {
   logo: SiteLogo;
+  commandCenter: {
+    launchTitle: string;
+    launchDetails: string;
+    membersCount: string;
+    runsCount: string;
+  };
 };
