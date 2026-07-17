@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { Handshake, Mail, MapPin, PhoneCall, Send } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -10,24 +10,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { apiErrorMessage } from "@/services/api";
+import { submitPartnerEnquiry } from "@/services/partner.service";
 
 export default function ContactPage() {
-  function sendPartnerEnquiry(event: FormEvent<HTMLFormElement>) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function sendPartnerEnquiry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const brandName = String(form.get("brandName") ?? "").trim();
+    const input = {
+      brandName,
+      contactName: String(form.get("contactName") ?? "").trim(),
+      email: String(form.get("email") ?? "").trim(),
+      phone: String(form.get("phone") ?? "").trim(),
+      website: String(form.get("website") ?? "").trim(),
+      category: String(form.get("category") ?? "").trim(),
+      message: String(form.get("message") ?? "").trim()
+    };
     const lines = [
       `Brand / company: ${brandName}`,
-      `Contact person: ${form.get("contactName")}`,
-      `Email: ${form.get("email")}`,
-      `Phone: ${form.get("phone")}`,
-      `Website / social: ${form.get("website") || "Not provided"}`,
-      `Partnership type: ${form.get("category")}`,
+      `Contact person: ${input.contactName}`,
+      `Email: ${input.email}`,
+      `Phone: ${input.phone}`,
+      `Website / social: ${input.website || "Not provided"}`,
+      `Partnership type: ${input.category}`,
       "",
       "Proposal:",
-      String(form.get("message") ?? "")
+      input.message
     ];
-    window.location.href = `mailto:support@rebelsonroads.com?subject=${encodeURIComponent(`Partnership enquiry - ${brandName}`)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    try {
+      setIsSubmitting(true);
+      await submitPartnerEnquiry(input);
+      toast.success("Enquiry saved. Opening your email app...");
+      formElement.reset();
+      window.location.href = `mailto:support@rebelsonroads.com?subject=${encodeURIComponent(`Partnership enquiry - ${brandName}`)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -101,7 +126,7 @@ export default function ContactPage() {
             <label className="grid gap-1 text-sm">Website or social profile<Input name="website" type="url" placeholder="https://" /></label>
             <label className="grid gap-1 text-sm">Partnership type<Select name="category" required defaultValue=""><option value="" disabled>Select a category</option><option>Riding gear</option><option>Motorcycle accessories</option><option>Hospitality or venue</option><option>Event sponsorship</option><option>Media collaboration</option><option>Other</option></Select></label>
             <label className="grid gap-1 text-sm sm:col-span-2">Partnership proposal<Textarea name="message" required rows={6} maxLength={2000} placeholder="Describe your brand, proposed collaboration, and what you would like to offer." /></label>
-            <Button className="sm:col-span-2 sm:justify-self-start" type="submit"><Mail className="h-4 w-4" /> Email partnership team</Button>
+            <Button className="sm:col-span-2 sm:justify-self-start" type="submit" disabled={isSubmitting}><Mail className="h-4 w-4" /> {isSubmitting ? "Submitting..." : "Email partnership team"}</Button>
           </form>
         </div>
       </section>
