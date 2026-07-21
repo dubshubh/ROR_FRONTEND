@@ -7,10 +7,11 @@ export type ContentItem = {
   description: string;
   date?: string;
   endDate?: string;
-  status: "upcoming" | "completed";
+  status: "upcoming" | "ongoing" | "completed";
   location: string;
   startLocation: string;
   destination: string;
+  routeWaypoints: string[];
   category: string;
   videoUrl: string;
   image?: { publicId: string; url: string };

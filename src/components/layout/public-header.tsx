@@ -9,7 +9,7 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 
 const navLinks = [
   { href: "/#home", label: "Home" },
-  { href: "/#about", label: "About" },
+  { href: "/about", label: "About" },
   { href: "/#events", label: "Events" },
   { href: "/#rides", label: "Rides" },
   { href: "/#partners", label: "Brand Partners" },
