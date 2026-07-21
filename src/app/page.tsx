@@ -74,7 +74,18 @@ export default async function HomePage() {
 }
 
 function ContentBand({ id, icon, eyebrow, title, items, empty, mode }: { id: string; icon: typeof Bike; eyebrow: string; title: string; items: ContentItem[]; empty: string; mode: "event" | "route" }) {
-  return <section id={id} className="border-y border-red-900 bg-[#050505]"><div className="mx-auto max-w-6xl px-4 py-16"><Heading icon={icon} eyebrow={eyebrow} title={title} />{items.length ? <div className="motion-stagger mt-8 grid gap-6 lg:grid-cols-2">{items.map((item) => <article key={item._id} className="rebel-frame rebel-hover overflow-hidden rounded-3xl border border-red-900 bg-[#0f0f0f]"><MediaGrid item={item} /><div className="p-5"><div className="flex flex-wrap gap-3 font-mono text-xs uppercase tracking-[0.12em] text-[#d91b1b]"><span>{formatDate(item.date)}{item.endDate ? ` - ${formatDate(item.endDate)}` : ""}</span><span>{item.status}</span></div><h3 className="mt-3 font-display text-3xl text-[#e8d9c9]">{item.title}</h3>{mode === "route" ? <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#e8d9c9]"><MapPin className="h-4 w-4 text-[#d91b1b]" />{item.startLocation || "Start TBA"} <ArrowRight className="h-4 w-4" /> {item.destination || "Destination TBA"}</p> : <p className="mt-2 text-sm text-[#e8d9c9]">{item.location}</p>}<p className="mt-3 text-sm leading-7 text-muted-foreground">{item.description}</p></div></article>)}</div> : <Empty text={empty} />}</div></section>;
+  const upcoming = items.filter((item) => item.status === "upcoming" || item.status === "ongoing");
+  const completed = items.filter((item) => item.status === "completed");
+  return <section id={id} className="border-y border-red-900 bg-[#050505]"><div className="mx-auto max-w-6xl px-4 py-16"><Heading icon={icon} eyebrow={eyebrow} title={title} />{items.length ? <div className="mt-10 space-y-12"><ContentGroup title="Upcoming / Ongoing" items={upcoming} mode={mode} /><ContentGroup title="Completed" items={completed} mode={mode} /></div> : <Empty text={empty} />}</div></section>;
+}
+
+function ContentGroup({ title, items, mode }: { title: string; items: ContentItem[]; mode: "event" | "route" }) {
+  if (!items.length) return null;
+  return <div><div className="mb-5 flex items-center gap-3"><span className="h-px w-8 bg-[#d91b1b]" /><h3 className="font-mono text-xs uppercase tracking-[0.22em] text-[#d91b1b]">{title}</h3></div><div className="motion-stagger grid gap-6 lg:grid-cols-2">{items.map((item) => <article key={item._id} className="rebel-frame rebel-hover overflow-hidden rounded-3xl border border-red-900 bg-[#0f0f0f]"><MediaGrid item={item} /><div className="p-5"><div className="flex flex-wrap gap-3 font-mono text-xs uppercase tracking-[0.12em] text-[#d91b1b]"><span>{formatDate(item.date)}{item.endDate ? ` - ${formatDate(item.endDate)}` : ""}</span><span>{item.status}</span></div><h4 className="mt-3 font-display text-3xl text-[#e8d9c9]">{item.title}</h4>{mode === "route" ? <RouteSummary item={item} /> : <p className="mt-2 flex items-center gap-2 text-sm text-[#e8d9c9]"><MapPin className="h-4 w-4 shrink-0 text-[#d91b1b]" />{item.location || "Venue TBA"}</p>}<p className="mt-3 text-sm leading-7 text-muted-foreground">{item.description}</p></div></article>)}</div></div>;
+}
+
+function RouteSummary({ item }: { item: ContentItem }) {
+  return <div className="mt-2 text-sm text-[#e8d9c9]"><p className="flex flex-wrap items-center gap-2"><MapPin className="h-4 w-4 text-[#d91b1b]" />{item.startLocation || "Start TBA"} <ArrowRight className="h-4 w-4" /> {item.destination || "Destination TBA"}</p>{item.routeWaypoints?.length ? <p className="mt-2 text-xs text-muted-foreground">Via {item.routeWaypoints.join(" · ")}</p> : null}</div>;
 }
 
 function MediaGrid({ item }: { item: ContentItem }) {

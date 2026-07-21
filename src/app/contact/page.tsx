@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { Handshake, Mail, MapPin, PhoneCall, Send } from "lucide-react";
+import { Bike, CalendarDays, Handshake, Mail, MapPin, Send, ShieldCheck } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export default function ContactPage() {
           <p className="font-mono-label text-sm uppercase tracking-[0.25em] text-[#d91b1b]">Contact</p>
           <h1 className="mt-3 font-display text-4xl text-[#e8d9c9] sm:text-5xl">Reach the crew</h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-            Connect for ride updates, event participation, or membership related questions. The team will get back to you quickly.
+            Connect with Rebels on Roads for ride participation, membership, safety initiatives, event collaborations, or brand partnerships.
           </p>
         </div>
       </section>
@@ -80,15 +80,11 @@ export default function ContactPage() {
               <span>support@rebelsonroads.com</span>
             </div>
             <div className="flex items-center gap-3">
-              <PhoneCall className="h-4 w-4 text-[#d91b1b]" />
-              <span>+91 98765 43210</span>
-            </div>
-            <div className="flex items-center gap-3">
               <MapPin className="h-4 w-4 text-[#d91b1b]" />
-              <span>Dehradun • Pune • Goa ride circuit</span>
+              <span>Dehradun, Uttarakhand</span>
             </div>
             <p className="leading-7">
-              Whether you are a first-time rider or a seasoned road explorer, the team is happy to guide you into the next event.
+              Whether you are a first-time rider, an experienced tourer, or an organization with a meaningful idea, we would be glad to hear from you.
             </p>
           </CardContent>
         </Card>
@@ -109,6 +105,14 @@ export default function ContactPage() {
             </Button>
           </CardContent>
         </Card>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-16">
+        <div className="grid gap-4 md:grid-cols-3">
+          <ContactReason icon={Bike} title="Ride with us" text="Ask about membership, upcoming rides, eligibility, and group riding expectations." />
+          <ContactReason icon={CalendarDays} title="Events & initiatives" text="Connect for awareness rides, charity initiatives, community events, and collaborations." />
+          <ContactReason icon={ShieldCheck} title="Safety & support" text="Share a road-safety idea, responsible-riding initiative, or a question for the crew." />
+        </div>
       </section>
 
       <section id="partner" className="scroll-mt-24 border-y border-red-900 bg-[#080808]">
@@ -134,4 +138,8 @@ export default function ContactPage() {
       <SiteFooter />
     </main>
   );
+}
+
+function ContactReason({ icon: Icon, title, text }: { icon: typeof Bike; title: string; text: string }) {
+  return <article className="rebel-frame border border-red-900 bg-[#0f0f0f] p-5"><Icon className="h-5 w-5 text-[#d91b1b]" /><h2 className="mt-4 font-display text-2xl text-[#e8d9c9]">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p></article>;
 }

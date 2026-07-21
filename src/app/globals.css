@@ -35,7 +35,7 @@ body {
     radial-gradient(circle at 80% 10%, rgba(217, 27, 27, 0.12), transparent 35rem),
     linear-gradient(135deg, #0a0a0a 0%, #0f0f0f 50%, #150a0a 100%);
   color: hsl(var(--foreground));
-  font-family: var(--font-chivo), sans-serif;
+  font-family: var(--font-inter), sans-serif;
 }
 
 img,
