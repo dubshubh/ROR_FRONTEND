@@ -13,6 +13,9 @@ export type ContentItem = {
   destination: string;
   routeWaypoints: string[];
   category: string;
+  websiteUrl?: string;
+  partnershipBond?: string;
+  collaborationSince?: string;
   videoUrl: string;
   image?: { publicId: string; url: string };
   images: { publicId: string; url: string }[];

@@ -1,8 +1,8 @@
 export type RiderStatus = "pending" | "approved" | "rejected";
 
 export type RiderFile = {
-  publicId: string;
-  url: string;
+  available: boolean;
+  kind: "image" | "pdf";
 };
 
 export type Rider = {

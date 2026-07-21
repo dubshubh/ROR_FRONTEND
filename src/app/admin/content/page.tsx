@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bike, CalendarDays, Handshake, ImageIcon, MapPinned, Pencil, Plus, Trash2, X } from "lucide-react";
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -54,10 +55,10 @@ export default function ContentPage() {
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {items.map((item) => (
                       <Card key={item._id} className="overflow-hidden">
-                        {(item.images?.[0] ?? item.image) ? <img src={(item.images?.[0] ?? item.image)!.url} alt={item.title} className="h-36 w-full object-cover" /> : null}
+                        {(item.images?.[0] ?? item.image) ? <Image src={(item.images?.[0] ?? item.image)!.url} alt={item.title} width={640} height={288} className="h-36 w-full object-cover" /> : item.videos?.[0] ? <video src={item.videos[0].url} muted playsInline preload="metadata" className="h-36 w-full bg-black object-cover" /> : null}
                         <div className="p-4">
                           <div className="flex items-start justify-between gap-3">
-                            <div><h3 className="font-display text-xl text-[#ffdad8]">{item.title}</h3><p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description || item.category}</p></div>
+                            <div><h3 className="font-display text-xl text-[#ffdad8]">{item.title}</h3><p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description || item.category}</p>{item.kind === "photo" ? <p className="mt-2 font-mono text-[9px] uppercase tracking-wider text-[#ff535b]">{item.images?.length || (item.image ? 1 : 0)} photos · {item.videos?.length ?? 0} videos</p> : null}</div>
                             <div className="flex shrink-0 gap-1">
                               <Button size="icon" variant="outline" title="Edit" onClick={() => { setCreating(null); setEditing(item); }}><Pencil className="h-4 w-4" /></Button>
                               <Button size="icon" variant="destructive" title="Delete" disabled={deleteMutation.isPending} onClick={() => window.confirm(`Delete ${item.title}?`) && deleteMutation.mutate(item._id)}><Trash2 className="h-4 w-4" /></Button>
@@ -79,6 +80,10 @@ export default function ContentPage() {
 }
 
 function ContentEditor({ kind, item, onClose, onSaved }: { kind: ContentKind; item: ContentItem | null; onClose: () => void; onSaved: () => void }) {
+  const existingImages = item?.images?.length ? item.images : item?.image ? [item.image] : [];
+  const existingVideos = item?.videos ?? [];
+  const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+  const [removedVideoIds, setRemovedVideoIds] = useState<string[]>([]);
   const mutation = useMutation({
     mutationFn: (form: FormData) => saveContent(kind, form, item?._id),
     onSuccess: () => { onSaved(); onClose(); toast.success(item ? "Item updated" : "Item added"); },
@@ -86,22 +91,26 @@ function ContentEditor({ kind, item, onClose, onSaved }: { kind: ContentKind; it
   });
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    mutation.mutate(new FormData(event.currentTarget));
+    const form = new FormData(event.currentTarget);
+    if (kind === "photo" && item) {
+      form.set("retainedImageIds", existingImages.filter((asset) => !removedImageIds.includes(asset.publicId)).map((asset) => asset.publicId).join(","));
+      form.set("retainedVideoIds", existingVideos.filter((asset) => !removedVideoIds.includes(asset.publicId)).map((asset) => asset.publicId).join(","));
+    }
+    mutation.mutate(form);
   }
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <form onSubmit={submit} className="max-h-[94vh] w-full max-w-xl overflow-y-auto border-2 border-primary bg-[#151414] p-4 sm:max-h-[90vh] sm:p-5">
         <div className="mb-5 flex items-center justify-between gap-3"><h2 className="font-display text-2xl text-[#ffb3b1] sm:text-3xl">{item ? "Edit" : "Add"} {kind}</h2><Button type="button" size="icon" variant="outline" title="Close" onClick={onClose}><X className="h-4 w-4" /></Button></div>
         <div className="grid gap-4">
-          <label className="grid gap-1 text-sm">Title<Input name="title" required maxLength={120} defaultValue={item?.title} /></label>
-          <label className="grid gap-1 text-sm">Description<Textarea name="description" rows={4} maxLength={1000} defaultValue={item?.description} /></label>
+          <label className="grid gap-1 text-sm">{kind === "photo" ? "Collection title" : "Title"}<Input name="title" required maxLength={120} defaultValue={item?.title} placeholder={kind === "photo" ? "Midnight run through Dehradun" : undefined} /></label>
+          <label className="grid gap-1 text-sm">{kind === "photo" ? "Story / caption" : "Description"}<Textarea name="description" rows={4} maxLength={1000} defaultValue={item?.description} placeholder={kind === "photo" ? "Give this collection a short story that adds context to every frame." : undefined} /></label>
           {kind === "event" || kind === "ride" || kind === "intercity" ? <><div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-1 text-sm">Start date<Input name="date" type="date" defaultValue={item?.date?.slice(0, 10)} /></label><label className="grid gap-1 text-sm">End date<Input name="endDate" type="date" defaultValue={item?.endDate?.slice(0, 10)} /></label></div><label className="grid gap-1 text-sm">Status<Select name="status" defaultValue={item?.status ?? "upcoming"}><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option></Select></label></> : null}
           {kind === "event" ? <label className="grid gap-1 text-sm">Venue / location<Input name="location" required defaultValue={item?.location} placeholder="Exact venue name and city" /></label> : null}
           {kind === "ride" || kind === "intercity" ? <><div className="grid gap-4 sm:grid-cols-2"><label className="grid gap-1 text-sm">Ride starts from<Input name="startLocation" required defaultValue={item?.startLocation} placeholder="Exact meeting point" /></label><label className="grid gap-1 text-sm">Destination<Input name="destination" required defaultValue={item?.destination} placeholder="Exact destination" /></label></div><label className="grid gap-1 text-sm">Route stops (optional)<Textarea name="routeWaypoints" rows={3} maxLength={1300} defaultValue={item?.routeWaypoints?.join("\n")} placeholder={"One stop per line, for example:\nKempty Falls\nMussoorie Diversion"} /><span className="text-xs text-muted-foreground">Up to 8 stops, shown in ride order.</span></label></> : null}
-          {kind === "brand" ? <label className="grid gap-1 text-sm">Category<Input name="category" required defaultValue={item?.category} placeholder="Helmets & riding protection" /></label> : null}
-          {kind === "photo" ? <label className="grid gap-1 text-sm">Video URL (YouTube, Instagram, etc.)<Input name="videoUrl" type="url" defaultValue={item?.videoUrl} placeholder="https://" /></label> : null}
-          <label className="grid gap-1 text-sm">{item?.images?.length || item?.image ? "Replace all images (up to 8)" : "Images (up to 8)"}<Input name="images" type="file" multiple accept="image/jpeg,image/png,image/webp" /></label>
-          {kind === "photo" ? <label className="grid gap-1 text-sm">{item?.videos?.length ? "Replace uploaded videos (up to 2, 25 MB each)" : "Upload videos (up to 2, 25 MB each)"}<Input name="videos" type="file" multiple accept="video/mp4,video/webm" /></label> : null}
+          {kind === "brand" ? <><label className="grid gap-1 text-sm">Category<Input name="category" required defaultValue={item?.category} placeholder="Helmets & riding protection" /></label><label className="grid gap-1 text-sm">Official website<Input name="websiteUrl" type="url" maxLength={500} defaultValue={item?.websiteUrl} placeholder="https://brand.example" /></label><label className="grid gap-1 text-sm">Why this partnership works<Textarea name="partnershipBond" rows={4} maxLength={1200} defaultValue={item?.partnershipBond} placeholder="Describe the shared values, common thinking, and bond between the brand and Rebels on Roads." /></label><label className="grid gap-1 text-sm">Collaborating since<Input name="collaborationSince" maxLength={40} defaultValue={item?.collaborationSince} placeholder="2025 or Founding Partner" /></label></> : null}
+          <label className="grid gap-1 text-sm">{kind === "photo" && item ? "Add photos" : item?.images?.length || item?.image ? "Replace all images (up to 8)" : kind === "photo" ? "Upload photos (up to 8)" : "Images (up to 8)"}<Input name="images" type="file" multiple accept="image/jpeg,image/png,image/webp" /><span className="text-xs text-muted-foreground">JPG, PNG or WebP. A photography collection can contain up to 8 photos.</span></label>
+          {kind === "photo" ? <><label className="grid gap-1 text-sm">{item ? "Add videos" : "Upload videos (up to 2, 25 MB each)"}<Input name="videos" type="file" multiple accept="video/mp4,video/webm" /><span className="text-xs text-muted-foreground">MP4 or WebM. A collection can contain up to 2 videos.</span></label>{item && (existingImages.length + existingVideos.length > 0) ? <div className="grid gap-2"><span className="text-sm">Published media · click × to remove</span><div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{existingImages.map((asset) => <div className={`relative ${removedImageIds.includes(asset.publicId) ? "opacity-30" : ""}`} key={asset.publicId}><Image src={asset.url} alt="" width={120} height={90} className="h-20 w-full object-cover" /><button type="button" title={removedImageIds.includes(asset.publicId) ? "Restore photo" : "Remove photo"} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center bg-black/80 text-white" onClick={() => setRemovedImageIds((ids) => ids.includes(asset.publicId) ? ids.filter((id) => id !== asset.publicId) : [...ids, asset.publicId])}><X className="h-3.5 w-3.5" /></button></div>)}{existingVideos.map((asset) => <div className={`relative ${removedVideoIds.includes(asset.publicId) ? "opacity-30" : ""}`} key={asset.publicId}><video src={asset.url} muted preload="metadata" className="h-20 w-full bg-black object-cover" /><button type="button" title={removedVideoIds.includes(asset.publicId) ? "Restore video" : "Remove video"} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center bg-black/80 text-white" onClick={() => setRemovedVideoIds((ids) => ids.includes(asset.publicId) ? ids.filter((id) => id !== asset.publicId) : [...ids, asset.publicId])}><X className="h-3.5 w-3.5" /></button></div>)}</div><span className="text-xs text-muted-foreground">Removed media is deleted permanently after you save. New uploads are added to retained media.</span></div> : null}</> : null}
           <label className="grid gap-1 text-sm">Display order<Input name="sortOrder" type="number" defaultValue={item?.sortOrder ?? 0} /></label>
           <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Saving..." : item ? "Update" : "Add item"}</Button>
         </div>

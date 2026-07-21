@@ -7,7 +7,7 @@ const booleanFromForm = z.preprocess((value) => {
   if (value === "false") return false;
   return value;
 }, z.boolean());
-const optionalString = z.preprocess((value) => (value === "" ? undefined : value), z.string().optional());
+const optionalString = z.preprocess((value) => (value === "" ? undefined : value), z.string().trim().min(5).max(30).regex(/^[A-Za-z0-9 -]+$/, "Enter a valid driving licence number").optional());
 const fileSchema = z
   .any()
   .refine((files) => files?.length === 1, "File is required")
@@ -26,23 +26,23 @@ function isAtLeast18(value: string) {
 }
 
 export const riderRegistrationSchema = z.object({
-  fullName: z.string().min(3, "Full name must be at least 3 characters"),
-  email: z.string().email("Enter a valid email"),
+  fullName: z.string().trim().min(3, "Full name must be at least 3 characters").max(100),
+  email: z.string().trim().email("Enter a valid email").max(200),
   phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid Indian phone number"),
   dob: z.string().min(1, "Date of birth is required").refine(isAtLeast18, "Rider must be at least 18 years old"),
   gender: z.string().min(1, "Gender is required"),
   bloodGroup: z.string().min(1, "Blood group is required"),
   emergencyContact: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid Indian phone number"),
-  city: z.string().min(1, "City is required"),
-  state: z.string().min(1, "State is required"),
-  bikeModel: z.string().min(1, "Bike model is required"),
-  bikeNumber: z.string().min(1, "Bike number is required"),
-  ridingExperience: z.coerce.number().min(0, "Experience cannot be negative"),
+  city: z.string().trim().min(1, "City is required").max(80),
+  state: z.string().trim().min(1, "State is required").max(80),
+  bikeModel: z.string().trim().min(1, "Bike model is required").max(100),
+  bikeNumber: z.string().trim().min(6, "Enter a valid bike number").max(20).regex(/^[A-Za-z0-9 -]+$/, "Enter a valid bike number"),
+  ridingExperience: z.coerce.number().min(0, "Experience cannot be negative").max(80),
   dlNumber: optionalString,
   aadhaarNumber: z.string().regex(/^\d{12}$/, "Aadhaar must be exactly 12 digits"),
   joinedOtherGroupBefore: booleanFromForm,
-  previousGroupLeaveReason: z.string().optional().default(""),
-  joinReason: z.string().optional().default(""),
+  previousGroupLeaveReason: z.string().trim().max(1000).optional().default(""),
+  joinReason: z.string().trim().max(1000).optional().default(""),
   dlFront: optionalFileSchema,
   dlBack: optionalFileSchema,
   aadhaarFront: fileSchema,

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { LayoutDashboard, LogOut, PanelsTopLeft, Shield, Users } from "lucide-react";
+import { Handshake, LayoutDashboard, LogOut, Mail, PanelsTopLeft, Shield, Users } from "lucide-react";
 import { SiteBrand } from "@/components/layout/site-brand";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
@@ -11,19 +11,21 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  const { logout, requireToken } = useAuth();
+  const { logout, requireSession } = useAuth();
   const { data } = useSiteSettings();
   const pathname = usePathname();
 
   const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/riders", label: "Roster", icon: Users },
-    { href: "/admin/content", label: "Content", icon: PanelsTopLeft }
+    { href: "/admin/content", label: "Content", icon: PanelsTopLeft },
+    { href: "/admin/partner-enquiries", label: "Partners", icon: Handshake },
+    { href: "/admin/email-center", label: "Email", icon: Mail }
   ];
 
   useEffect(() => {
-    requireToken();
-  }, [requireToken]);
+    void requireSession();
+  }, [requireSession]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -71,7 +73,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
-          <nav className="grid grid-cols-3 border-t border-[#5b403f] px-3 py-2">
+          <nav className="grid grid-cols-5 border-t border-[#5b403f] px-2 py-2">
             {navItems.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(`${href}/`);
 

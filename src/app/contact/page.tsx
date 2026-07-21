@@ -1,145 +1,64 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { Bike, CalendarDays, Handshake, Mail, MapPin, Send, ShieldCheck } from "lucide-react";
+import { FormEvent, MouseEvent, useState } from "react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Bike, CalendarDays, CheckCircle2, Clock3, Handshake, Mail, MapPin, MessageCircle, Send, ShieldCheck, Sparkles } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/services/api";
 import { submitPartnerEnquiry } from "@/services/partner.service";
+import { OFFICIAL_CONTACT_EMAIL } from "@/config/contact";
+import { socialLinks } from "@/config/social-links";
+
+function gmailComposeUrl(subject = "", body = "") {
+  const params = new URLSearchParams({ view: "cm", fs: "1", to: OFFICIAL_CONTACT_EMAIL });
+  if (subject) params.set("su", subject);
+  if (body) params.set("body", body);
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+const contactPaths = [
+  { icon: Bike, number: "01", title: "Join the crew", text: "Membership, eligibility and your first road briefing.", href: "/join-group", action: "Apply to ride" },
+  { icon: CalendarDays, number: "02", title: "Build an event", text: "Awareness rides, community initiatives and road experiences.", href: gmailComposeUrl("Event collaboration with Rebels on Roads"), action: "Plan with us" },
+  { icon: Handshake, number: "03", title: "Partner with ROR", text: "Create an authentic collaboration that riders remember.", href: "#partner", action: "Start proposal" }
+];
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   async function sendPartnerEnquiry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const brandName = String(form.get("brandName") ?? "").trim();
-    const input = {
-      brandName,
-      contactName: String(form.get("contactName") ?? "").trim(),
-      email: String(form.get("email") ?? "").trim(),
-      phone: String(form.get("phone") ?? "").trim(),
-      website: String(form.get("website") ?? "").trim(),
-      category: String(form.get("category") ?? "").trim(),
-      message: String(form.get("message") ?? "").trim()
-    };
-    const lines = [
-      `Brand / company: ${brandName}`,
-      `Contact person: ${input.contactName}`,
-      `Email: ${input.email}`,
-      `Phone: ${input.phone}`,
-      `Website / social: ${input.website || "Not provided"}`,
-      `Partnership type: ${input.category}`,
-      "",
-      "Proposal:",
-      input.message
-    ];
-    try {
-      setIsSubmitting(true);
-      await submitPartnerEnquiry(input);
-      toast.success("Enquiry saved. Opening your email app...");
-      formElement.reset();
-      window.location.href = `mailto:support@rebelsonroads.com?subject=${encodeURIComponent(`Partnership enquiry - ${brandName}`)}&body=${encodeURIComponent(lines.join("\n"))}`;
-    } catch (error) {
-      toast.error(apiErrorMessage(error));
-    } finally {
-      setIsSubmitting(false);
-    }
+    const input = { brandName, contactName: String(form.get("contactName") ?? "").trim(), email: String(form.get("email") ?? "").trim(), phone: String(form.get("phone") ?? "").trim(), website: String(form.get("website") ?? "").trim(), category: String(form.get("category") ?? "").trim(), message: String(form.get("message") ?? "").trim() };
+    const body = [`Brand / company: ${brandName}`, `Contact person: ${input.contactName}`, `Email: ${input.email}`, `Phone: ${input.phone}`, `Website / social: ${input.website || "Not provided"}`, `Partnership type: ${input.category}`, "", "Proposal:", input.message].join("\n");
+    try { setIsSubmitting(true); await submitPartnerEnquiry(input); setSubmitted(true); formElement.reset(); toast.success("Partnership enquiry received"); window.location.assign(gmailComposeUrl(`Partnership enquiry - ${brandName}`, body)); } catch (error) { toast.error(apiErrorMessage(error)); } finally { setIsSubmitting(false); }
   }
 
-  return (
-    <main className="min-h-screen bg-background">
-      <PublicHeader />
+  function openWebEmail(event: MouseEvent<HTMLElement>) {
+    const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="mailto:"]');
+    if (!anchor) return;
+    event.preventDefault();
+    const subject = new URL(anchor.href).searchParams.get("subject") || "Contact Rebels on Roads";
+    window.open(gmailComposeUrl(subject), "_blank", "noopener,noreferrer");
+  }
 
-      <section className="border-b-2 border-red-600 bg-[#0a0a0a]">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <p className="font-mono-label text-sm uppercase tracking-[0.25em] text-[#d91b1b]">Contact</p>
-          <h1 className="mt-3 font-display text-4xl text-[#e8d9c9] sm:text-5xl">Reach the crew</h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-            Connect with Rebels on Roads for ride participation, membership, safety initiatives, event collaborations, or brand partnerships.
-          </p>
-        </div>
-      </section>
+  return <main className="contact-page min-h-screen bg-[#070707]" onClick={openWebEmail}><PublicHeader />
+    <section className="contact-hero"><div className="contact-radar" aria-hidden="true"><i /><i /><i /><span /></div><div className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:py-28"><p className="contact-label"><Sparkles className="h-4 w-4" /> Open channel · Rebels on Roads</p><h1 className="contact-title mt-6">Let&apos;s make<br /><span>contact.</span></h1><p className="mt-7 max-w-xl text-base leading-8 text-[#aa978c] sm:text-lg">Whether you want to ride, build an experience or bring a meaningful idea to the road—the command center is listening.</p><div className="mt-9 flex flex-wrap gap-3"><Button asChild size="lg"><a href={`mailto:${OFFICIAL_CONTACT_EMAIL}`}>Email the crew <ArrowUpRight className="h-4 w-4" /></a></Button><Button asChild size="lg" variant="outline"><a href="#contact-paths">Choose your route <ArrowDown className="h-4 w-4" /></a></Button></div></div></section>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-4 py-16 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="border-red-900 bg-[#0f0f0f]">
-          <CardHeader>
-            <CardTitle className="text-[#e8d9c9]">Get in touch</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-[#d91b1b]" />
-              <span>support@rebelsonroads.com</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <MapPin className="h-4 w-4 text-[#d91b1b]" />
-              <span>Dehradun, Uttarakhand</span>
-            </div>
-            <p className="leading-7">
-              Whether you are a first-time rider, an experienced tourer, or an organization with a meaningful idea, we would be glad to hear from you.
-            </p>
-          </CardContent>
-        </Card>
+    <section className="mx-auto max-w-6xl px-4 py-16 lg:py-24" id="contact-paths"><div className="contact-heading"><div><p className="contact-label">Choose your line</p><h2>What brings you to the road?</h2></div><p>Pick the clearest route and your message reaches the right part of the crew.</p></div><div className="contact-path-grid">{contactPaths.map(({ icon: Icon, number, title, text, href, action }) => <Link href={href} className="contact-path" key={title}><span>{number}</span><div className="contact-path-icon"><Icon /></div><h3>{title}</h3><p>{text}</p><strong>{action}<ArrowRight /></strong></Link>)}</div></section>
 
-        <Card className="border-red-900 bg-[#0f0f0f]">
-          <CardHeader>
-            <CardTitle className="text-[#e8d9c9]">Start your journey</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm leading-7 text-muted-foreground">
-              Ready to ride with the crew? Register to join the next planned run and start your journey with Rebels on Roads.
-            </p>
-            <Button asChild className="w-full">
-              <Link href="/join-group">
-                Join group
-                <Send className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+    <section className="contact-command"><div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 lg:grid-cols-[.8fr_1.2fr] lg:items-start lg:py-24"><div className="contact-info"><p className="contact-label"><MessageCircle className="h-4 w-4" /> Direct channel</p><h2>Real people.<br />One official line.</h2><p>Reach the team for rider support, safety initiatives, events and community coordination.</p><a href={`mailto:${OFFICIAL_CONTACT_EMAIL}`} className="contact-email"><Mail /><span><small>Official email</small><strong>{OFFICIAL_CONTACT_EMAIL}</strong></span><ArrowUpRight /></a><div className="contact-facts"><span><MapPin /><strong>Dehradun</strong><small>Uttarakhand, India</small></span><span><Clock3 /><strong>Community-led</strong><small>Replies may take 1–2 days</small></span><span><ShieldCheck /><strong>Verified channel</strong><small>No unofficial payment requests</small></span></div><div className="contact-socials">{socialLinks.map((social) => <a href={social.href} target="_blank" rel="noopener noreferrer" key={social.label}>{social.label}<ArrowUpRight /></a>)}</div></div>
 
-      <section className="mx-auto max-w-6xl px-4 pb-16">
-        <div className="grid gap-4 md:grid-cols-3">
-          <ContactReason icon={Bike} title="Ride with us" text="Ask about membership, upcoming rides, eligibility, and group riding expectations." />
-          <ContactReason icon={CalendarDays} title="Events & initiatives" text="Connect for awareness rides, charity initiatives, community events, and collaborations." />
-          <ContactReason icon={ShieldCheck} title="Safety & support" text="Share a road-safety idea, responsible-riding initiative, or a question for the crew." />
-        </div>
-      </section>
-
-      <section id="partner" className="scroll-mt-24 border-y border-red-900 bg-[#080808]">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <div className="mb-8 max-w-2xl">
-            <div className="flex items-center gap-2 text-[#d91b1b]"><Handshake className="h-5 w-5" /><p className="font-mono-label text-sm uppercase tracking-[0.25em]">Partner with us</p></div>
-            <h2 className="mt-3 font-display text-3xl text-[#e8d9c9] sm:text-4xl">Tell us about your brand</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">Complete the details below to prepare an email for our partnership team.</p>
-          </div>
-          <form className="grid gap-4 border border-red-900 bg-[#0f0f0f] p-5 sm:grid-cols-2 sm:p-7" onSubmit={sendPartnerEnquiry}>
-            <label className="grid gap-1 text-sm">Brand or company name<Input name="brandName" required maxLength={120} /></label>
-            <label className="grid gap-1 text-sm">Contact person<Input name="contactName" required maxLength={100} /></label>
-            <label className="grid gap-1 text-sm">Business email<Input name="email" type="email" required /></label>
-            <label className="grid gap-1 text-sm">Phone number<Input name="phone" type="tel" required maxLength={20} /></label>
-            <label className="grid gap-1 text-sm">Website or social profile<Input name="website" type="url" placeholder="https://" /></label>
-            <label className="grid gap-1 text-sm">Partnership type<Select name="category" required defaultValue=""><option value="" disabled>Select a category</option><option>Riding gear</option><option>Motorcycle accessories</option><option>Hospitality or venue</option><option>Event sponsorship</option><option>Media collaboration</option><option>Other</option></Select></label>
-            <label className="grid gap-1 text-sm sm:col-span-2">Partnership proposal<Textarea name="message" required rows={6} maxLength={2000} placeholder="Describe your brand, proposed collaboration, and what you would like to offer." /></label>
-            <Button className="sm:col-span-2 sm:justify-self-start" type="submit" disabled={isSubmitting}><Mail className="h-4 w-4" /> {isSubmitting ? "Submitting..." : "Email partnership team"}</Button>
-          </form>
-        </div>
-      </section>
-
-      <SiteFooter />
-    </main>
-  );
+      <div className="contact-partner-card" id="partner"><div className="contact-form-heading"><span><Handshake /></span><div><p>Partnership desk</p><h2>Tell us what you want to build.</h2></div></div>{submitted ? <div className="contact-form-success"><CheckCircle2 /><h3>Proposal logged.</h3><p>Your enquiry is safely stored for the admin team. Your email app has also been opened with a prepared copy.</p><Button type="button" variant="outline" onClick={() => setSubmitted(false)}>Send another proposal</Button></div> : <form onSubmit={sendPartnerEnquiry} className="contact-form"><div className="contact-form-grid"><label>Brand / company<Input name="brandName" required maxLength={120} placeholder="Brand name" /></label><label>Contact person<Input name="contactName" required maxLength={100} placeholder="Your full name" /></label><label>Business email<Input name="email" type="email" required placeholder="you@company.com" /></label><label>Phone number<Input name="phone" type="tel" required maxLength={20} placeholder="Contact number" /></label><label>Website / social<Input name="website" type="url" placeholder="https://" /></label><label>Partnership type<Select name="category" required defaultValue=""><option value="" disabled>Select category</option><option>Riding gear</option><option>Motorcycle accessories</option><option>Hospitality or venue</option><option>Event sponsorship</option><option>Media collaboration</option><option>Other</option></Select></label></div><label>Partnership proposal<Textarea name="message" required rows={6} maxLength={2000} placeholder="Tell us about your brand, the common ground and the experience you want to create." /></label><div className="contact-form-submit"><p><ShieldCheck />Stored securely for the ROR admin team</p><Button type="submit" disabled={isSubmitting}><Send className="h-4 w-4" />{isSubmitting ? "Transmitting…" : "Send proposal"}</Button></div></form>}</div></div></section>
+    <SiteFooter />
+  </main>;
 }
 
-function ContactReason({ icon: Icon, title, text }: { icon: typeof Bike; title: string; text: string }) {
-  return <article className="rebel-frame border border-red-900 bg-[#0f0f0f] p-5"><Icon className="h-5 w-5 text-[#d91b1b]" /><h2 className="mt-4 font-display text-2xl text-[#e8d9c9]">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p></article>;
-}

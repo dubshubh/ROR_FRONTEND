@@ -9,13 +9,20 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
 export const metadata: Metadata = {
-  title: "Rider Registration",
-  description: "Motorcycle riding group registration and admin management"
+  title: { default: "Rebels on Roads", template: "%s | Rebels on Roads" },
+  description: "Official Rebels on Roads community website, rides, events, photography and rider registration"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('ror-theme');if(t!=='light'&&t!=='dark')t='dark';document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t}catch(e){document.documentElement.dataset.theme='dark'}})();`
+          }}
+        />
+      </head>
       <body className={`${anton.variable} ${inter.variable} ${jetbrains.variable}`}>
         <QueryProvider>{children}</QueryProvider>
         <Toaster richColors position="top-right" />

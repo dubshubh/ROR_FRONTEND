@@ -16,7 +16,6 @@ export function SiteBrand({ logo, compact = false }: { logo?: SiteLogo; compact?
       </div>
       <div className="min-w-0">
         <div className={cn("brand-title truncate font-display leading-none", compact ? "text-lg sm:text-2xl" : "text-2xl sm:text-3xl")}>Rebels On Roads</div>
-        <div className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:block">Registration & Management</div>
       </div>
     </div>
   );

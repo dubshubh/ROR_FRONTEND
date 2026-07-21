@@ -1,53 +1,124 @@
+import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Bike, HeartHandshake, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Bike,
+  Compass,
+  Flag,
+  HeartHandshake,
+  MapPin,
+  Quote,
+  ShieldCheck,
+  Sparkles,
+  Users
+} from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 
+export const metadata: Metadata = {
+  title: "About Rebels on Roads",
+  description: "Meet the founder and discover the purpose, values, and riding culture behind Rebels on Roads."
+};
+
 const values = [
-  { icon: ShieldCheck, title: "Responsible riding", text: "Promoting road safety, discipline, preparedness, and respect on every ride." },
-  { icon: Users, title: "Rider brotherhood", text: "Connecting riders from every walk of life through support, unity, and shared adventure." },
-  { icon: HeartHandshake, title: "Community impact", text: "Using the strength of the riding community for awareness campaigns, charity, and service." }
+  { icon: ShieldCheck, number: "01", title: "Ride responsible", text: "Preparation, discipline and respect for every rider sharing the road." },
+  { icon: Users, number: "02", title: "Move as one", text: "A brotherhood where experience is shared and no rider is left behind." },
+  { icon: HeartHandshake, number: "03", title: "Leave an impact", text: "Turning the energy of the riding community into awareness, service and change." }
+];
+
+const roadCode = [
+  { icon: ShieldCheck, title: "Safety before speed", text: "Every memorable ride starts with preparation and returns with everyone safe." },
+  { icon: Compass, title: "Purpose in every mile", text: "Adventure matters more when it creates connection, confidence and perspective." },
+  { icon: HeartHandshake, title: "Community beyond machines", text: "The motorcycle brings us together; character and mutual respect keep us together." },
+  { icon: Flag, title: "Pride with responsibility", text: "We represent our roads, our region and our riding culture with discipline." }
 ];
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen overflow-hidden bg-background">
       <PublicHeader />
 
-      <section className="relative overflow-hidden border-b-2 border-red-600 bg-[#080808]">
-        <div className="checkered-strip absolute inset-x-0 top-0 h-2 opacity-70" aria-hidden="true" />
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:py-24">
-          <div className="rebel-frame relative overflow-hidden rounded-3xl border border-red-900 bg-[#111]">
-            <img src="/images/param-arora.png" alt="Param Arora, Founder of Rebels on Roads" className="aspect-[2/3] w-full object-cover object-center" />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-6 pb-6 pt-24">
-              <p className="font-display text-3xl text-[#e8d9c9]">Param Arora</p>
-              <p className="mt-1 font-mono text-xs uppercase tracking-[0.2em] text-[#d91b1b]">Founder · Rebels on Roads</p>
+      <section className="about-hero">
+        <div className="about-hero-grid" aria-hidden="true" />
+        <Image src="/images/rebels-on-roads-3d.png" alt="" fill priority className="about-hero-emblem" sizes="100vw" aria-hidden="true" />
+        <div className="about-hero-glow" aria-hidden="true" />
+        <div className="relative z-10 mx-auto max-w-6xl px-4 py-24 sm:py-32 lg:py-40">
+          <div className="max-w-4xl">
+            <div className="about-eyebrow"><span /><Bike className="h-4 w-4" /> Born on the road. Built with purpose.</div>
+            <h1 className="about-title mt-7">More than riders.<br /><span>We are a movement.</span></h1>
+            <p className="mt-7 max-w-2xl text-base leading-8 text-[#bca99c] sm:text-lg">Rebels on Roads brings motorcycle enthusiasts together through responsible adventure, genuine brotherhood and a shared commitment to creating positive impact.</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Button asChild size="lg"><Link href="/join-group">Ride with us <ArrowRight className="h-4 w-4" /></Link></Button>
+              <Button asChild size="lg" variant="outline"><Link href="/calendar">Explore road calendar</Link></Button>
             </div>
           </div>
-
-          <div>
-            <p className="font-mono-label text-sm uppercase tracking-[0.25em] text-[#d91b1b]">Meet the founder</p>
-            <h1 className="mt-3 font-display text-4xl leading-tight text-[#e8d9c9] sm:text-6xl">A community built with purpose.</h1>
-            <div className="mt-7 space-y-5 text-base leading-8 text-muted-foreground">
-              <p>Param Arora is the Founder of <span className="font-semibold text-[#e8d9c9]">Rebels on Roads</span>, one of Dehradun&apos;s growing motorcycle riding communities dedicated to responsible riding, road safety, adventure touring, and community service.</p>
-              <p>Driven by a passion for motorcycles and the open road, Param created Rebels on Roads to bring riders from all walks of life together around a common purpose: building a disciplined, supportive, and socially responsible riding culture. Under his leadership, the community has organized rides, awareness campaigns, charity initiatives, and large-scale motorcycle events across Uttarakhand.</p>
-              <p>For Param, motorcycles are also a way to inspire unity, patriotism, and positive social impact. His focus is on creating memorable riding experiences while encouraging safe practices, environmental responsibility, and giving back to society.</p>
-              <p>Today, Rebels on Roads continues to grow as a respected riding community, connecting enthusiasts through adventure, brotherhood, and a shared passion for exploring the roads of India.</p>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg"><Link href="/join-group">Join the community <ArrowRight className="h-4 w-4" /></Link></Button>
-              <Button asChild size="lg" variant="outline"><Link href="/contact">Connect with ROR</Link></Button>
-            </div>
+          <div className="about-manifesto" aria-label="Our foundation">
+            <span><strong>Road</strong><small>Adventure</small></span>
+            <i />
+            <span><strong>Bond</strong><small>Brotherhood</small></span>
+            <i />
+            <span><strong>Cause</strong><small>Impact</small></span>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="flex items-center gap-2 text-[#d91b1b]"><Bike className="h-5 w-5" /><p className="font-mono-label text-sm uppercase tracking-[0.25em]">What drives us</p></div>
-        <h2 className="mt-3 max-w-3xl font-display text-3xl text-[#e8d9c9] sm:text-4xl">Adventure with discipline. Brotherhood with impact.</h2>
-        <div className="mt-9 grid gap-5 md:grid-cols-3">
-          {values.map(({ icon: Icon, title, text }) => <article key={title} className="rebel-frame rounded-2xl border border-red-900 bg-[#0f0f0f] p-6"><Icon className="h-6 w-6 text-[#d91b1b]" /><h3 className="mt-5 font-display text-2xl text-[#e8d9c9]">{title}</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{text}</p></article>)}
+      <section className="about-founder-section">
+        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 lg:grid-cols-[.88fr_1.12fr] lg:items-center lg:py-28">
+          <div className="about-founder-visual">
+            <div className="about-founder-number" aria-hidden="true">01</div>
+            <div className="about-founder-image rebel-frame">
+              <Image src="/images/param-arora.png" alt="Param Arora, founder of Rebels on Roads" width={800} height={1200} className="h-full w-full object-cover object-center" />
+              <div className="about-founder-caption"><div><strong>Param Arora</strong><span>Founder · Rebels on Roads</span></div><MapPin className="h-5 w-5" /></div>
+            </div>
+            <div className="about-founder-stamp"><Bike className="h-6 w-6" /><span>Dehradun<br />Uttarakhand</span></div>
+          </div>
+
+          <div className="about-founder-copy">
+            <p className="about-section-label"><Sparkles className="h-4 w-4" /> The story behind the throttle</p>
+            <h2 className="mt-4 font-display text-4xl leading-tight text-[#e8d9c9] sm:text-6xl">One rider&apos;s vision.<br /><span className="text-[#ff535b]">A growing brotherhood.</span></h2>
+            <Quote className="mt-8 h-9 w-9 text-[#722629]" aria-hidden="true" />
+            <p className="about-quote">“The road is not only where we find adventure. It is where we learn discipline, build trust and discover what we can achieve together.”</p>
+            <div className="mt-7 space-y-4 text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+              <p>Param Arora founded Rebels on Roads to create a riding culture where passion and responsibility move together. What began with a love for motorcycles became a platform connecting riders from different walks of life.</p>
+              <p>Under his leadership, the community brings riders together for adventure touring, awareness campaigns, charity initiatives and large-scale motorcycle events across Uttarakhand—always with safety, unity and social responsibility at the center.</p>
+            </div>
+            <div className="about-signature"><span>Driven by</span><strong>Purpose over noise.</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="about-values-section">
+        <div className="mx-auto max-w-6xl px-4 py-20 lg:py-28">
+          <div className="about-section-heading">
+            <div><p className="about-section-label"><Bike className="h-4 w-4" /> What drives us</p><h2 className="mt-4 font-display text-4xl text-[#e8d9c9] sm:text-6xl">Our throttle has a conscience.</h2></div>
+            <p>Adventure is only meaningful when it is backed by discipline, respect and a reason bigger than the ride itself.</p>
+          </div>
+          <div className="about-value-grid">
+            {values.map(({ icon: Icon, number, title, text }) => <article className="about-value-card" key={title}><span className="about-value-number">{number}</span><div className="about-value-icon"><Icon className="h-6 w-6" /></div><h3>{title}</h3><p>{text}</p><span className="about-value-line" /></article>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="about-code-section">
+        <div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 lg:grid-cols-[.8fr_1.2fr] lg:items-start lg:py-28">
+          <div className="lg:sticky lg:top-28">
+            <p className="about-section-label"><ShieldCheck className="h-4 w-4" /> The ROR road code</p>
+            <h2 className="mt-4 font-display text-4xl text-[#e8d9c9] sm:text-6xl">How we show up on every road.</h2>
+            <p className="mt-6 max-w-md leading-7 text-muted-foreground">These principles guide our rides, our events and the way we represent the motorcycle community.</p>
+          </div>
+          <div className="about-code-list">
+            {roadCode.map(({ icon: Icon, title, text }, index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div className="about-code-icon"><Icon className="h-5 w-5" /></div><div><h3>{title}</h3><p>{text}</p></div></article>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-20 lg:pb-28">
+        <div className="about-cta rebel-frame">
+          <div className="about-cta-light" aria-hidden="true" />
+          <div className="relative z-10"><p className="about-section-label"><Bike className="h-4 w-4" /> Your next chapter starts here</p><h2 className="mt-4 max-w-3xl font-display text-4xl text-white sm:text-6xl">The road is calling.<br />Don&apos;t ride it alone.</h2><p className="mt-5 max-w-xl leading-7 text-[#bca99c]">Join a community that values the journey, the people beside you and the impact left behind.</p><div className="mt-8 flex flex-wrap gap-3"><Button asChild size="lg"><Link href="/join-group">Join Rebels on Roads <ArrowRight className="h-4 w-4" /></Link></Button><Button asChild size="lg" variant="outline"><Link href="/contact">Talk to the team</Link></Button></div></div>
+          <Image src="/images/rebels-on-roads-3d.png" alt="" width={620} height={620} className="about-cta-emblem" aria-hidden="true" />
         </div>
       </section>
 

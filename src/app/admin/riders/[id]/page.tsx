@@ -9,7 +9,7 @@ import { DocumentPreview } from "@/components/riders/document-preview";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiErrorMessage } from "@/services/api";
+import { apiAssetUrl, apiErrorMessage } from "@/services/api";
 import { deleteRider, getRider, updateRiderStatus } from "@/services/rider.service";
 import { RiderStatus } from "@/types/rider";
 
@@ -104,10 +104,10 @@ export default function RiderDetailPage() {
           <CardTitle>Document Preview</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {rider.dlFront ? <DocumentPreview label="DL Front" file={rider.dlFront} /> : <MissingDocument label="DL Front" />}
-          {rider.dlBack ? <DocumentPreview label="DL Back" file={rider.dlBack} /> : <MissingDocument label="DL Back" />}
-          <DocumentPreview label="Aadhaar Front" file={rider.aadhaarFront} />
-          <DocumentPreview label="Aadhaar Back" file={rider.aadhaarBack} />
+          {rider.dlFront?.available ? <DocumentPreview label="DL Front" file={rider.dlFront} url={apiAssetUrl(`/admin/riders/${id}/documents/dlFront`)} /> : <MissingDocument label="DL Front" />}
+          {rider.dlBack?.available ? <DocumentPreview label="DL Back" file={rider.dlBack} url={apiAssetUrl(`/admin/riders/${id}/documents/dlBack`)} /> : <MissingDocument label="DL Back" />}
+          <DocumentPreview label="Aadhaar Front" file={rider.aadhaarFront} url={apiAssetUrl(`/admin/riders/${id}/documents/aadhaarFront`)} />
+          <DocumentPreview label="Aadhaar Back" file={rider.aadhaarBack} url={apiAssetUrl(`/admin/riders/${id}/documents/aadhaarBack`)} />
         </CardContent>
       </Card>
       </div>
