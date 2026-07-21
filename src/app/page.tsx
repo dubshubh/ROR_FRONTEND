@@ -1,36 +1,64 @@
+import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Bike, CalendarDays, Camera, Handshake, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bike, CalendarDays, Camera, ChevronRight, Clock3, Handshake, MapPin, MapPinned, Route, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
+import { loadPublicContent } from "@/lib/public-content";
 import { getSiteSettings } from "@/services/settings.service";
+import type { ContentItem } from "@/types/content";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Rebels on Roads", description: "Responsible rides, real brotherhood, and road experiences from Rebels on Roads." };
 
 const exploreLinks = [
-  { href: "/calendar", title: "Road Calendar", text: "Events, chapter rides and intercity missions in one live schedule.", icon: CalendarDays },
-  { href: "/photography", title: "Photography", text: "Road stories captured across every chapter.", icon: Camera },
-  { href: "/partners", title: "Partners", text: "Brands and organizations supporting the crew.", icon: Handshake }
+  { href: "/calendar", title: "Road Calendar", label: "Ride plans", text: "Events, chapter rides and intercity missions in one live schedule.", icon: CalendarDays },
+  { href: "/photography", title: "Road Archive", label: "Photos & films", text: "The machines, people and moments captured between destinations.", icon: Camera },
+  { href: "/partners", title: "Brand Partners", label: "Shared direction", text: "Meet the brands building meaningful road experiences beside us.", icon: Handshake }
 ];
 
 export default async function HomePage() {
   let commandCenter = { launchTitle: "Next ride announcement coming soon", launchDetails: "Follow the official channels for route and assembly updates", membersCount: "120+", runsCount: "35" };
-  try { const settings = await getSiteSettings(); if (settings.commandCenter) commandCenter = settings.commandCenter; } catch { /* Keep the landing page available while the API starts. */ }
+  let missions: ContentItem[] = [];
+  const [settingsResult, contentResult] = await Promise.allSettled([getSiteSettings(), loadPublicContent()]);
+  if (settingsResult.status === "fulfilled" && settingsResult.value.commandCenter) commandCenter = settingsResult.value.commandCenter;
+  if (contentResult.status === "fulfilled") missions = [...contentResult.value.events, ...contentResult.value.rides, ...contentResult.value.intercity];
+  const nextMission = getNextMission(missions);
 
-  return <main className="min-h-screen bg-background"><PublicHeader />
-    <section className="hero-3d border-b-2 border-red-600">
-      <div className="hero-3d__emblem" aria-hidden="true" /><div className="hero-3d__shade" aria-hidden="true" />
-      <div className="relative z-10 mx-auto grid min-h-[620px] max-w-6xl gap-8 px-4 py-14 sm:min-h-[680px] sm:py-24 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-        <div className="space-y-6 lg:max-w-2xl"><div className="inline-flex items-center gap-2 rounded-full border border-[#d91b1b] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.25em] text-[#ff535b]"><ShieldCheck className="h-3.5 w-3.5" />Official riding community</div><h1 className="font-display text-4xl leading-tight text-[#e8d9c9] sm:text-6xl lg:text-7xl">Ride bold. Build bonds. Own the road.</h1><p className="max-w-2xl text-base leading-7 text-[#e8d9c9] sm:text-lg">Premium rides, disciplined formations and a community built around safety, respect and brotherhood.</p><div className="flex flex-wrap gap-4"><Button asChild size="lg"><Link href="/join-group">Join the crew <ArrowRight className="h-4 w-4" /></Link></Button><Button asChild variant="outline" size="lg"><Link href="/rides">Explore rides</Link></Button></div></div>
-        <div className="rebel-frame hero-command-card rounded-3xl p-6"><div className="flex items-center gap-3 text-[#ff535b]"><Bike className="h-5 w-5" /><span className="font-mono text-xs uppercase">Road command center</span></div><div className="mt-6 rounded-2xl border border-red-900 bg-[#1a1a1a] p-5"><p className="text-sm text-[#e8d9c9]">Next launch</p><p className="mt-2 font-display text-3xl text-[#ff535b]">{commandCenter.launchTitle}</p><p className="mt-2 text-sm leading-6 text-muted-foreground">{commandCenter.launchDetails}</p></div><div className="mt-4 grid grid-cols-2 gap-4"><Stat label="Members" value={commandCenter.membersCount} /><Stat label="Runs" value={commandCenter.runsCount} /></div></div>
+  return <main className="home-page min-h-screen bg-[#070707]"><PublicHeader />
+    <section className="home-hero">
+      <div className="home-hero-art" aria-hidden="true" />
+      <div className="home-hero-grid" aria-hidden="true" />
+      <div className="relative z-10 mx-auto grid min-h-[720px] max-w-6xl gap-12 px-4 py-20 lg:grid-cols-[1.12fr_.88fr] lg:items-center lg:py-28">
+        <div className="home-hero-copy"><p className="home-label"><span /> Official riding community · Dehradun</p><h1>Ride with<br /><em>purpose.</em></h1><p>Disciplined formations. Unforgettable roads. A brotherhood built on trust, safety and the stories we bring home.</p><div className="mt-9 flex flex-wrap gap-3"><Button asChild size="lg"><Link href="/join-group">Join the crew <ArrowRight className="h-4 w-4" /></Link></Button><Button asChild size="lg" variant="outline"><Link href="/calendar">Explore road calendar</Link></Button></div><div className="home-hero-proof"><ShieldCheck /><span><strong>Safety-led</strong><small>Every road starts with a briefing</small></span><Users /><span><strong>Community-built</strong><small>No rider left behind</small></span></div></div>
+        <NextMission mission={nextMission} fallback={commandCenter} />
       </div>
+      <div className="home-scroll-cue"><span>Explore</span><i /></div>
     </section>
 
-    <section className="mx-auto max-w-6xl px-4 py-16 sm:py-20"><div className="max-w-3xl"><p className="font-mono text-xs uppercase tracking-[0.25em] text-[#ff535b]">Explore Rebels on Roads</p><h2 className="mt-3 font-display text-4xl text-[#e8d9c9] sm:text-5xl">Everything has its own destination.</h2><p className="mt-4 text-base leading-7 text-muted-foreground">Use the dedicated pages to find current information without scrolling through one oversized homepage.</p></div><div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{exploreLinks.map(({ href, title, text, icon: Icon }) => <Link href={href} className="brand-panel rebel-frame rebel-hover group rounded-2xl p-6" key={href}><Icon className="h-6 w-6 text-[#ff535b]" /><h3 className="mt-8 font-display text-3xl text-[#e8d9c9]">{title}</h3><p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p><span className="mt-6 inline-flex items-center gap-2 font-mono text-xs uppercase text-[#ff535b]">Open page <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></Link>)}</div></section>
+    <section className="home-stats"><div><span><strong>{commandCenter.membersCount}</strong><small>Registered riders</small></span><i /><span><strong>{commandCenter.runsCount}</strong><small>Road missions</small></span><i /><span><strong>01</strong><small>Brotherhood</small></span><p>Ride with discipline · Return with stories</p></div></section>
 
-    <section className="border-y border-red-900 bg-[#080808]"><div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className="font-mono text-xs uppercase tracking-[0.25em] text-[#ff535b]">Membership</p><h2 className="mt-2 font-display text-4xl">Ready for the next ride?</h2><p className="mt-3 text-muted-foreground">Submit your rider application for verification by the road captain.</p></div><div className="flex flex-wrap gap-3"><Button asChild size="lg"><Link href="/join-group">Register now</Link></Button><Button asChild size="lg" variant="outline"><Link href="/contact">Contact the crew</Link></Button></div></div></section>
+    <section className="mx-auto max-w-6xl px-4 py-20 lg:py-28"><div className="home-section-heading"><div><p className="home-label"><span /> Find your road</p><h2>Everything has<br />its own destination.</h2></div><p>One community, clearly organized. Find the schedule, experience the archive or discover the partners who share our direction.</p></div><div className="home-explore-grid">{exploreLinks.map(({ href, title, label, text, icon: Icon }, index) => <Link href={href} className="home-explore-card" key={href}><span className="home-explore-index">0{index + 1}</span><div className="home-explore-icon"><Icon /></div><p>{label}</p><h3>{title}</h3><small>{text}</small><strong>Open destination <ChevronRight /></strong></Link>)}</div></section>
+
+    <section className="home-code"><div className="mx-auto grid max-w-6xl gap-12 px-4 py-20 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:py-28"><div><p className="home-label"><span /> Our road code</p><h2>Adventure earns respect through discipline.</h2><p className="mt-6 max-w-xl leading-8 text-[#948076]">We ride for the thrill of the road, but we are remembered for how we treat the people on it. Preparation, formation and mutual respect define every ROR journey.</p><Button asChild variant="outline" className="mt-8"><Link href="/about">Why we ride <ArrowRight className="h-4 w-4" /></Link></Button></div><div className="home-code-list"><article><ShieldCheck /><span><strong>Safety before speed</strong><small>Prepared riders create better stories.</small></span><b>01</b></article><article><Users /><span><strong>Move as one</strong><small>The crew arrives together.</small></span><b>02</b></article><article><Route /><span><strong>Purpose in every mile</strong><small>Leave the road better than we found it.</small></span><b>03</b></article></div></div></section>
+
+    <section className="mx-auto max-w-6xl px-4 py-20 lg:py-28"><div className="home-cta rebel-frame"><div><p className="home-label"><Sparkles className="h-4 w-4" /> Your road starts here</p><h2>Ready to earn<br />your place?</h2><p>Submit your rider application. The command center reviews every member before approval.</p><div><Button asChild size="lg"><Link href="/join-group">Start application <ArrowRight className="h-4 w-4" /></Link></Button><Button asChild size="lg" variant="outline"><Link href="/contact">Contact the crew</Link></Button></div></div><Bike className="home-cta-bike" aria-hidden="true" /></div></section>
     <SiteFooter />
   </main>;
 }
 
-function Stat({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl border border-red-900 bg-[#1a1a1a] p-4"><p className="font-mono text-xs uppercase tracking-[0.2em] text-[#ff535b]">{label}</p><p className="mt-2 font-display text-4xl text-[#e8d9c9]">{value}</p></div>; }
+function NextMission({ mission, fallback }: { mission?: ContentItem; fallback: { launchTitle: string; launchDetails: string } }) {
+  const image = mission?.images?.[0] ?? mission?.image;
+  const location = mission ? mission.kind === "event" ? mission.location : [mission.startLocation, mission.destination].filter(Boolean).join(" → ") : fallback.launchDetails;
+  return <article className="home-next-card">
+    <div className="home-next-media">{image ? <Image src={image.url} alt={mission!.title} fill priority sizes="(max-width: 1024px) 100vw, 42vw" className="object-cover" /> : <div className="home-next-placeholder"><Bike /></div>}<span className="home-next-shade" /><span className="home-next-live"><i /> Next on the road</span></div>
+    <div className="home-next-body"><div className="home-next-type">{mission?.kind === "intercity" ? <MapPinned /> : mission?.kind === "event" ? <CalendarDays /> : <Bike />}<span>{mission?.kind || "Ride briefing"}</span>{mission?.status ? <b>{mission.status}</b> : null}</div><h2>{mission?.title || fallback.launchTitle}</h2>{mission?.date ? <div className="home-next-date"><strong>{new Date(mission.date).toLocaleDateString("en-IN", { day: "2-digit" })}</strong><span>{new Date(mission.date).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span><Clock3 /></div> : null}<p><MapPin />{location || "Route briefing coming soon"}</p>{mission ? <Link href={`/calendar/${mission._id}`}>View mission details <ArrowRight /></Link> : <Link href="/calendar">Open road calendar <ArrowRight /></Link>}</div>
+  </article>;
+}
+
+function getNextMission(items: ContentItem[]) {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  return [...items].filter((item) => item.date && item.status !== "completed" && new Date(item.date) >= now).sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime())[0]
+    ?? [...items].filter((item) => item.date).sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime())[0];
+}

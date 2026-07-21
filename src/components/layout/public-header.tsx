@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { SiteBrand } from "@/components/layout/site-brand";
 import { Button } from "@/components/ui/button";
 import { useSiteSettings } from "@/hooks/use-site-settings";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -60,6 +61,7 @@ export function PublicHeader() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          <ThemeToggle />
           <Link href="/join-group" className="public-header-join">Join crew <ArrowUpRight className="h-3.5 w-3.5" /></Link>
           <Button className="lg:hidden" variant="outline" size="icon" title="Navigation" aria-expanded={isOpen} onClick={() => setIsOpen((value) => !value)}>
             {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -79,6 +81,7 @@ export function PublicHeader() {
             </Link>
           ))}
         </nav>
+        <ThemeToggle mobile />
         <Link href="/join-group" onClick={() => setIsOpen(false)} className="public-mobile-join">Join the crew <ArrowUpRight className="h-4 w-4" /></Link>
       </aside>
     </header>
