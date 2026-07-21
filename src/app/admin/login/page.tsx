@@ -24,10 +24,9 @@ export default function AdminLoginPage() {
 
   const mutation = useMutation({
     mutationFn: loginAdmin,
-    onSuccess: ({ token }) => {
-      localStorage.setItem("adminToken", token);
-      document.cookie = `adminToken=${token}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+    onSuccess: () => {
       router.replace("/admin/dashboard");
+      router.refresh();
     },
     onError: (error) => toast.error(apiErrorMessage(error))
   });

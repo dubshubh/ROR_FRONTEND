@@ -2,21 +2,28 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { getCurrentAdmin, logoutAdmin } from "@/services/auth.service";
 
 export function useAuth() {
   const router = useRouter();
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("adminToken");
-    document.cookie = "adminToken=; path=/; max-age=0";
-    router.replace("/admin/login");
+  const logout = useCallback(async () => {
+    try {
+      await logoutAdmin();
+    } finally {
+      router.replace("/admin/login");
+      router.refresh();
+    }
   }, [router]);
 
-  const requireToken = useCallback(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) router.replace("/admin/login");
-    return token;
+  const requireSession = useCallback(async () => {
+    try {
+      return await getCurrentAdmin();
+    } catch {
+      router.replace("/admin/login");
+      return null;
+    }
   }, [router]);
 
-  return { logout, requireToken };
+  return { logout, requireSession };
 }

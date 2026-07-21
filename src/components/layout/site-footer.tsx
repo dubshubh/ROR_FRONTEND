@@ -1,6 +1,8 @@
 "use client";
 
-import { Instagram, MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { ArrowUp, ArrowUpRight, Instagram, Mail, MessageCircle } from "lucide-react";
+import { OFFICIAL_CONTACT_EMAIL } from "@/config/contact";
 import { SocialLinkLabel, socialLinks } from "@/config/social-links";
 
 const socialIcons = {
@@ -8,48 +10,38 @@ const socialIcons = {
   Instagram
 } satisfies Record<SocialLinkLabel, typeof MessageCircle>;
 
+const footerLinks = [
+  { href: "/calendar", label: "Road Calendar" },
+  { href: "/partners", label: "Partners" },
+  { href: "/join-group", label: "Join Crew" },
+  { href: "/contact", label: "Contact" }
+];
+
 export function SiteFooter() {
   return (
-    <footer className="mt-10 border-t-2 border-red-600 bg-[#0a0a0a]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-        <div className="grid gap-5 md:grid-cols-[1fr_auto_1fr] md:items-center">
-          <div className="flex flex-col gap-2 text-left">
-            <span className="text-[#d91b1b]">Rebels On Roads</span>
-            <span>All actions logged by command center</span>
-            <span>Ride with discipline, ride with pride</span>
-          </div>
+    <footer className="site-footer">
+      <div className="site-footer-accent" aria-hidden="true" />
+      <div className="site-footer-inner">
+        <div className="site-footer-main">
+          <Link href="/" className="site-footer-brand" aria-label="Rebels on Roads home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/rebels-on-roads-3d.png" alt="" />
+            <span><strong>Rebels on Roads</strong><small>Ride with discipline · Ride with pride</small></span>
+          </Link>
 
-          <div className="text-center">
-            <p className="font-display text-base uppercase tracking-[0.25em] text-[#e8d9c9]">Developed by Dubey</p>
-            <p className="mt-1 text-[10px] text-[#d91b1b]">Official club operations and rider management</p>
-          </div>
+          <nav className="site-footer-nav" aria-label="Footer navigation">
+            {footerLinks.map((link) => <Link href={link.href} key={link.href}>{link.label}</Link>)}
+          </nav>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 md:justify-end">
-            {socialLinks.length > 0 ? (
-              socialLinks.map(({ label, href }) => {
-                const Icon = socialIcons[label];
-
-                return (
-                  <a
-                    key={label}
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rebel-hover inline-flex h-10 items-center gap-2 border border-[#d91b1b] px-3 text-[#e8d9c9] transition-colors hover:bg-red-950/40"
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{label}</span>
-                  </a>
-                );
-              })
-            ) : (
-              <span className="text-[#e8d9c9]">Connect with the crew</span>
-            )}
+          <div className="site-footer-actions">
+            <a href={`mailto:${OFFICIAL_CONTACT_EMAIL}`} className="site-footer-email" aria-label={`Email ${OFFICIAL_CONTACT_EMAIL}`}><Mail className="h-4 w-4" /><span>Email us</span></a>
+            {socialLinks.map(({ label, href }) => { const Icon = socialIcons[label]; return <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="site-footer-social" aria-label={`Open Rebels on Roads on ${label}`}><Icon className="h-4 w-4" /><span>{label}</span><ArrowUpRight className="site-footer-external" /></a>; })}
           </div>
         </div>
 
-        <div className="border-t border-red-900 pt-4 text-center text-[10px] tracking-[0.18em] text-[#d91b1b]">
-          © 2026 Rebels On Roads. All rights reserved. Built for the road captain and the riding crew.
+        <div className="site-footer-meta">
+          <p>© {new Date().getFullYear()} Rebels on Roads <i /> Dehradun, India</p>
+          <div><span>Official club operations</span><a href="#" aria-label="Back to top">Back to top <ArrowUp className="h-3 w-3" /></a></div>
         </div>
       </div>
     </footer>

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Download, Search } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { apiErrorMessage } from "@/services/api";
 import { getRiders, downloadRiders } from "@/services/rider.service";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 export default function RidersPage() {
   const [search, setSearch] = useState("");
@@ -21,24 +22,27 @@ export default function RidersPage() {
   const [state, setState] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const debouncedCity = useDebouncedValue(city.trim());
+  const debouncedState = useDebouncedValue(state.trim());
+
+  useEffect(() => setPage(1), [debouncedSearch, debouncedCity, debouncedState, status, sortBy, sortOrder]);
 
   const params = useMemo(() => {
-    const nextParams: Record<string, string | number> = { page: 1, limit: 1000, sortBy, sortOrder };
+    const nextParams: Record<string, string | number> = { page, limit: 25, sortBy, sortOrder };
 
-    const trimmedSearch = search.trim();
-    if (trimmedSearch) nextParams.search = trimmedSearch;
+    if (debouncedSearch) nextParams.search = debouncedSearch;
 
     if (status) nextParams.status = status;
 
-    const trimmedCity = city.trim();
-    if (trimmedCity) nextParams.city = trimmedCity;
+    if (debouncedCity) nextParams.city = debouncedCity;
 
-    const trimmedState = state.trim();
-    if (trimmedState) nextParams.state = trimmedState;
+    if (debouncedState) nextParams.state = debouncedState;
 
     return nextParams;
-  }, [search, status, city, state, sortBy, sortOrder]);
-  const { data, isLoading, isFetching } = useQuery({ queryKey: ["riders", params], queryFn: () => getRiders(params) });
+  }, [debouncedSearch, status, debouncedCity, debouncedState, sortBy, sortOrder, page]);
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({ queryKey: ["riders", params], queryFn: () => getRiders(params) });
 
   return (
     <AdminShell>
@@ -94,7 +98,9 @@ export default function RidersPage() {
         <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffb3b1]">Refreshing rider roster...</div>
       ) : null}
 
-      <div className="motion-rise overflow-hidden rebel-frame bg-card">
+      {isError ? <Card className="mb-6 p-8 text-center"><p className="text-destructive">{apiErrorMessage(error)}</p><Button className="mt-4" onClick={() => void refetch()}>Try again</Button></Card> : null}
+
+      {!isError ? <div className="motion-rise overflow-hidden rebel-frame bg-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-[#2a2a2a] font-mono text-[11px] uppercase tracking-[0.12em] text-[#ffb3b1]">
@@ -135,12 +141,16 @@ export default function RidersPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div> : null}
 
       <div className="mt-4 flex items-center justify-between border-t border-[#5b403f] pt-4">
         <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-          All matching riders are listed above.
+          Page {data?.meta.page ?? page} of {data?.meta.totalPages || 1}
         </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+          <Button variant="outline" size="sm" disabled={page >= (data?.meta.totalPages || 1) || isFetching} onClick={() => setPage((value) => value + 1)}>Next</Button>
+        </div>
       </div>
       </div>
     </AdminShell>
