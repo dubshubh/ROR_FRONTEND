@@ -72,7 +72,6 @@ export default function AdminLoginPage() {
                 </button>
               </div>
               {errors.password ? <span className="text-xs text-destructive">{errors.password.message}</span> : null}
-              <Link href="/admin/forgot-password" className="justify-self-end font-mono text-[10px] uppercase tracking-[.12em] text-[#ff777d] transition hover:text-white">Forgot password?</Link>
             </label>
             <Button className="h-14 font-display text-2xl sm:h-16 sm:text-3xl" type="submit" disabled={mutation.isPending}>
               <LogIn className="h-4 w-4" />

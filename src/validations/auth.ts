@@ -6,13 +6,3 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
-
-export const resetPasswordSchema = z.object({
-  password: z.string().min(8, "Use at least 8 characters")
-    .regex(/[a-z]/, "Add a lowercase letter")
-    .regex(/[A-Z]/, "Add an uppercase letter")
-    .regex(/\d/, "Add a number"),
-  confirmPassword: z.string()
-}).refine((values) => values.password === values.confirmPassword, { path: ["confirmPassword"], message: "Passwords do not match" });
-
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

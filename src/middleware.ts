@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const publicAdminRoutes = ["/admin/login", "/admin/forgot-password", "/admin/reset-password"];
+const publicAdminRoutes = ["/admin/login"];
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
