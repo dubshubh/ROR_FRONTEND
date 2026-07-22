@@ -26,25 +26,27 @@ export function LogoUploader({ logo }: { logo?: SiteLogo }) {
   });
 
   return (
-    <Card className="max-w-xl border-primary">
+    <Card className="admin-settings-card max-w-xl border-primary">
       <CardHeader>
         <CardTitle>Logo Assets</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <div className="mx-auto flex h-56 w-56 items-center justify-center border-2 border-primary bg-white p-4">
+        <div className="admin-logo-preview mx-auto flex h-48 w-48 items-center justify-center p-4 sm:h-56 sm:w-56">
           {logo?.url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logo.url} alt="Current logo" className="h-full w-full object-contain" />
           ) : (
-            <ImageUp className="h-10 w-10 text-[#131313]" />
+            <ImageUp className="h-10 w-10 text-[#ff535b]" />
           )}
         </div>
         <div className="grid gap-3">
-          <Input
+          <Input id="admin-logo-file"
+            className="sr-only"
             type="file"
             accept=".jpg,.jpeg,.png,.webp"
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
           />
+          <label htmlFor="admin-logo-file" className="admin-file-picker"><ImageUp className="h-5 w-5"/><span>{file ? file.name : "Choose a logo image"}</span><b>Browse</b></label>
           <div className="grid gap-3">
             <Button className="w-full" disabled={!file || mutation.isPending} onClick={() => file && mutation.mutate(file)}>
               <ImageUp className="h-4 w-4" />

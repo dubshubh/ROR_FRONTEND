@@ -1,4 +1,4 @@
-export type RiderStatus = "pending" | "approved" | "rejected";
+export type RiderStatus = "pending" | "approved" | "rejected" | "contact_again";
 
 export type RiderFile = {
   available: boolean;
@@ -29,6 +29,7 @@ export type Rider = {
   aadhaarFront: RiderFile;
   aadhaarBack: RiderFile;
   status: RiderStatus;
+  adminRemark?: string;
   createdAt: string;
   updatedAt: string;
 };

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { apiErrorMessage } from "@/services/api";
 import {
@@ -23,6 +24,7 @@ export default function PartnerEnquiriesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | PartnerEnquiryStatus>("");
+  const [deleteTarget, setDeleteTarget] = useState<{id:string;name:string}|null>(null);
   const debouncedSearch = useDebouncedValue(search.trim());
   useEffect(() => setPage(1), [debouncedSearch, status]);
   const params = useMemo(() => ({ page, limit: 20, ...(status ? { status } : {}), ...(debouncedSearch ? { search: debouncedSearch } : {}) }), [debouncedSearch, page, status]);
@@ -35,7 +37,7 @@ export default function PartnerEnquiriesPage() {
   });
   const deleteMutation = useMutation({
     mutationFn: deletePartnerEnquiry,
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["partner-enquiries"] }); toast.success("Enquiry deleted"); },
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["partner-enquiries"] }); setDeleteTarget(null); toast.success("Enquiry deleted"); },
     onError: (error) => toast.error(apiErrorMessage(error))
   });
 
@@ -49,9 +51,10 @@ export default function PartnerEnquiriesPage() {
     {query.isLoading ? <div className="grid gap-4">{Array.from({ length: 4 }).map((_, index) => <div className="h-48 shimmer" key={index} />)}</div> : null}
     {!query.isLoading && !query.isError && !query.data?.enquiries.length ? <Card className="p-10 text-center text-muted-foreground">No partner enquiries found.</Card> : null}
     <div className="grid gap-4">{query.data?.enquiries.map((enquiry) => <Card className="rebel-frame p-5" key={enquiry._id}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h2 className="font-display text-2xl text-foreground">{enquiry.brandName}</h2><span className="border border-primary px-2 py-1 font-mono text-[10px] uppercase">{enquiry.status}</span></div><p className="mt-1 text-sm text-muted-foreground">{enquiry.contactName} · {enquiry.category} · {new Date(enquiry.createdAt).toLocaleDateString("en-IN")}</p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><a href={`mailto:${enquiry.email}`}><Mail className="h-4 w-4" />Reply</a></Button><Button size="sm" variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: enquiry._id, nextStatus: enquiry.status === "new" ? "reviewed" : "new" })}>Mark {enquiry.status === "new" ? "reviewed" : "new"}</Button><Button size="sm" variant="destructive" disabled={deleteMutation.isPending} onClick={() => { if (window.confirm(`Delete the enquiry from ${enquiry.brandName}?`)) deleteMutation.mutate(enquiry._id); }}><Trash2 className="h-4 w-4" />Delete</Button></div></div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h2 className="font-display text-2xl text-foreground">{enquiry.brandName}</h2><span className="border border-primary px-2 py-1 font-mono text-[10px] uppercase">{enquiry.status}</span></div><p className="mt-1 text-sm text-muted-foreground">{enquiry.contactName} · {enquiry.category} · {new Date(enquiry.createdAt).toLocaleDateString("en-IN")}</p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><a href={`mailto:${enquiry.email}`}><Mail className="h-4 w-4" />Reply</a></Button><Button size="sm" variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: enquiry._id, nextStatus: enquiry.status === "new" ? "reviewed" : "new" })}>Mark {enquiry.status === "new" ? "reviewed" : "new"}</Button><Button size="sm" variant="destructive" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget({id:enquiry._id,name:enquiry.brandName})}><Trash2 className="h-4 w-4" />Delete</Button></div></div>
       <p className="mt-4 whitespace-pre-wrap border-t border-[#5b403f] pt-4 text-sm leading-6">{enquiry.message}</p><div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-xs text-muted-foreground"><span>{enquiry.email}</span><span>{enquiry.phone}</span>{enquiry.website ? <a className="text-[#ffb3b1] underline" href={enquiry.website} rel="noreferrer" target="_blank">Website</a> : null}</div>
     </Card>)}</div>
     {query.data && query.data.meta.totalPages > 1 ? <div className="mt-6 flex items-center justify-between"><Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</Button><span className="font-mono text-xs">Page {page} of {query.data.meta.totalPages}</span><Button variant="outline" disabled={page >= query.data.meta.totalPages} onClick={() => setPage((value) => value + 1)}>Next</Button></div> : null}
+    <ConfirmDialog open={Boolean(deleteTarget)} onOpenChange={(open)=>!open&&setDeleteTarget(null)} title="Delete partner enquiry?" description={deleteTarget?`The enquiry from ${deleteTarget.name} will be permanently removed.`:""} confirmLabel="Delete enquiry" pending={deleteMutation.isPending} onConfirm={()=>deleteTarget&&deleteMutation.mutate(deleteTarget.id)}/>
   </div></AdminShell>;
 }
