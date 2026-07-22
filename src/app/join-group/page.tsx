@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowRight, Bike, Check, CheckCircle2, FileCheck2, FileUp, Fingerprint, HeartPulse, LockKeyhole, MapPin, Send, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, Bike, Check, CheckCircle2, FileCheck2, Fingerprint, HeartPulse, LockKeyhole, MapPin, Send, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { useState } from "react";
 import { FieldError, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FileUpload } from "@/components/ui/file-upload";
 import { apiErrorMessage } from "@/services/api";
 import { registerRider } from "@/services/rider.service";
 import { RiderRegistrationInput, riderRegistrationSchema } from "@/validations/rider";
@@ -79,7 +80,7 @@ export default function JoinGroupPage() {
         </FormSection>
 
         <FormSection number="05" icon={FileCheck2} eyebrow="Documents" title="Final verification files.">
-          <div className="join-upload-grid">{[["Driving licence · Front (optional)", "dlFront"], ["Driving licence · Back (optional)", "dlBack"], ["Aadhaar · Front", "aadhaarFront"], ["Aadhaar · Back", "aadhaarBack"]].map(([label, name]) => <FormField key={name} label={label} error={fileError(name as keyof RiderRegistrationInput)}><div className="join-upload"><FileUp /><div><strong>Choose file</strong><span>JPG, PNG or PDF</span></div><Input type="file" accept=".jpg,.jpeg,.png,.pdf" {...register(name as keyof RiderRegistrationInput)} /></div></FormField>)}</div>
+          <div className="join-upload-grid">{[["Driving licence · Front (optional)", "dlFront"], ["Driving licence · Back (optional)", "dlBack"], ["Aadhaar · Front", "aadhaarFront"], ["Aadhaar · Back", "aadhaarBack"]].map(([label, name]) => <FormField key={name} label={label} error={fileError(name as keyof RiderRegistrationInput)}><FileUpload {...register(name as keyof RiderRegistrationInput)} /></FormField>)}</div>
         </FormSection>
 
         <div className="join-submit"><label><input type="checkbox" {...register("terms")} /><span className="join-check"><Check /></span><span>I consent to membership verification and secure document review by authorized Rebels on Roads administrators.</span></label>{errors.terms ? <p>{errors.terms.message}</p> : null}<Button type="submit" size="lg" disabled={mutation.isPending}><Send className="h-4 w-4" />{mutation.isPending ? "Transmitting application…" : "Submit application"}</Button></div>

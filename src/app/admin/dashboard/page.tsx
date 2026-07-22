@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Clock, Users, XCircle } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CalendarDays, CheckCircle2, Clock, PanelsTopLeft, Users, XCircle } from "lucide-react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { LogoUploader } from "@/components/admin/logo-uploader";
 import { CommandCenterEditor } from "@/components/admin/command-center-editor";
@@ -25,7 +26,8 @@ export default function DashboardPage() {
       <div className="relative mb-8 border-b-2 border-primary pb-5">
         <div className="absolute left-0 top-0 -z-0 font-display text-8xl text-white/[0.035] sm:text-[10rem]">REBELS</div>
         <div className="relative">
-          <h1 className="font-display text-4xl text-foreground sm:text-7xl">Road Captain Portal</h1>
+          <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.2em] text-[#ff535b]"><span className="h-px w-8 bg-[#ff535b]" /> Live operations</div>
+          <h1 className="font-display text-4xl text-foreground sm:text-7xl">Command Overview</h1>
           <div className="rebel-pulse mt-2 h-2 w-32 bg-primary" />
           <p className="mt-4 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">Registration review summary and command actions.</p>
         </div>
@@ -49,6 +51,10 @@ export default function DashboardPage() {
       {isFetching && !isLoading ? (
         <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffb3b1]">Syncing command center...</div>
       ) : null}
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <Link href="/admin/content" className="admin-action-card group"><span><PanelsTopLeft /><small>Public website</small><strong>Manage user-facing content</strong><p>Publish rides, events, partners, photos and intercity missions.</p></span><ArrowRight /></Link>
+        <Link href="/admin/riders" className="admin-action-card group"><span><CalendarDays /><small>Member operations</small><strong>Review rider applications</strong><p>Approve registrations and maintain your active community roster.</p></span><ArrowRight /></Link>
+      </div>
       <div className="motion-rise mt-5">
         <div className="grid gap-5 lg:grid-cols-2">
           <CommandCenterEditor values={settings?.commandCenter} />

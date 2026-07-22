@@ -27,14 +27,16 @@ export async function getRider(id: string) {
   return data.data as Rider;
 }
 
-export async function updateRiderStatus(id: string, status: RiderStatus) {
-  const { data } = await api.patch(`/admin/riders/${id}/status`, { status });
+export async function updateRiderStatus(id: string, status: RiderStatus, remark = "") {
+  const { data } = await api.patch(`/admin/riders/${id}/status`, { status, remark });
   return data.data as Rider;
 }
 
 export async function deleteRider(id: string) {
   await api.delete(`/admin/riders/${id}`);
 }
+
+export async function bulkDeleteRiders(ids: string[]) { const { data } = await api.delete("/admin/riders", { data: { ids } }); return data.data as { deleted:number }; }
 
 export async function getDashboardStats() {
   const { data } = await api.get("/admin/stats");
