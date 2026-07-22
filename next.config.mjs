@@ -1,4 +1,7 @@
-const apiProxyTarget = (process.env.API_PROXY_TARGET || "http://localhost:8000").replace(/\/$/, "");
+const defaultApiProxyTarget = process.env.VERCEL
+  ? "https://ror-backend-1.onrender.com"
+  : "http://localhost:8000";
+const apiProxyTarget = (process.env.API_PROXY_TARGET || defaultApiProxyTarget).replace(/\/$/, "");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
