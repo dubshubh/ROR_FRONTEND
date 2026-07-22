@@ -2,15 +2,15 @@ import axios from "axios";
 
 const publicApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const internalApiUrl = process.env.INTERNAL_API_URL?.trim();
+const defaultServerApiUrl = process.env.VERCEL
+  ? "https://ror-backend-1.onrender.com/api"
+  : "http://localhost:8000/api";
 const configuredApiUrl = typeof window === "undefined"
-  ? internalApiUrl || publicApiUrl
-  : publicApiUrl;
-if (!configuredApiUrl && process.env.NODE_ENV === "production") {
-  throw new Error("NEXT_PUBLIC_API_URL is required in production");
-}
+  ? internalApiUrl || (publicApiUrl?.startsWith("http") ? publicApiUrl : undefined) || defaultServerApiUrl
+  : "/api";
 
 export const api = axios.create({
-  baseURL: configuredApiUrl || "http://localhost:8000/api",
+  baseURL: configuredApiUrl,
   withCredentials: true
 });
 
