@@ -1,8 +1,7 @@
-import type { NextConfig } from "next";
-
 const apiProxyTarget = (process.env.API_PROXY_TARGET || "http://localhost:8000").replace(/\/$/, "");
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Do not let `next build` overwrite manifests used by a running dev server.
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   images: {
