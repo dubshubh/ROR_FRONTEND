@@ -7,6 +7,10 @@ import { loadPublicContent } from "@/lib/public-content";
 
 export const metadata: Metadata = { title: "Road Photography", description: "Immersive photos and films from Rebels on Roads rides, events, and community stories." };
 
+// Photography is published from the admin at runtime. Always request the
+// current API data instead of retaining a deployment-time empty gallery.
+export const dynamic = "force-dynamic";
+
 export default async function PhotographyPage() {
   const content = await loadPublicContent();
   return <main className="photography-page min-h-screen overflow-hidden bg-[#070707]"><PublicHeader />

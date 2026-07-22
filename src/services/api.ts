@@ -2,11 +2,18 @@ import axios from "axios";
 
 const publicApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const internalApiUrl = process.env.INTERNAL_API_URL?.trim();
+const apiProxyTarget = process.env.API_PROXY_TARGET?.trim().replace(/\/$/, "");
+const proxiedBackendApiUrl = apiProxyTarget
+  ? `${apiProxyTarget}/api`
+  : undefined;
 const defaultServerApiUrl = process.env.VERCEL
   ? "https://ror-backend-1.onrender.com/api"
   : "http://localhost:8000/api";
 const configuredApiUrl = typeof window === "undefined"
-  ? internalApiUrl || (publicApiUrl?.startsWith("http") ? publicApiUrl : undefined) || defaultServerApiUrl
+  // Browser-side admin calls use the /api rewrite configured from
+  // API_PROXY_TARGET. Server-rendered public pages must prefer that same
+  // backend, otherwise the admin and public site can read different databases.
+  ? proxiedBackendApiUrl || internalApiUrl || (publicApiUrl?.startsWith("http") ? publicApiUrl : undefined) || defaultServerApiUrl
   : "/api";
 
 export const api = axios.create({

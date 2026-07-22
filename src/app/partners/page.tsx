@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   description: "Meet the brands that share the road, values, and community vision of Rebels on Roads."
 };
 
+// Brand records are managed at runtime; never serve a deployment-time render.
+export const dynamic = "force-dynamic";
+
 const sharedGround = [
   { icon: ShieldCheck, title: "Trust", text: "Products, people and promises the riding community can depend on." },
   { icon: Target, title: "Purpose", text: "Collaborations designed around genuine value—not surface-level visibility." },
