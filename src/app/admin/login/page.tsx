@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { data: settings } = useSiteSettings();
   const [showPassword, setShowPassword] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: "rebelsonroads@gmail.com" } });
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: "" } });
 
   const mutation = useMutation({
     mutationFn: loginAdmin,
@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
               <span className="font-mono text-sm uppercase tracking-[0.18em] text-[#ffdad8]">Identification / Email</span>
               <div className="relative">
                 <AtSign className="absolute left-4 top-4 h-5 w-5 text-[#ab8987]" />
-                <Input className="h-14 pl-12 text-base sm:h-16 sm:text-lg" type="email" autoComplete="email" placeholder="rebelsonroads@gmail.com" {...register("email")} />
+                <Input className="h-14 pl-12 text-base sm:h-16 sm:text-lg" type="email" autoComplete="username" placeholder="Enter admin email" {...register("email")} />
               </div>
               {errors.email ? <span className="text-xs text-destructive">{errors.email.message}</span> : null}
             </label>
