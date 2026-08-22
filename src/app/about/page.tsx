@@ -42,7 +42,6 @@ export default function AboutPage() {
 
       <section className="about-hero">
         <div className="about-hero-grid" aria-hidden="true" />
-        <Image src="/images/rebels-on-roads-3d.png" alt="" fill priority className="about-hero-emblem" sizes="100vw" aria-hidden="true" />
         <div className="about-hero-glow" aria-hidden="true" />
         <div className="relative z-10 mx-auto max-w-6xl px-4 py-24 sm:py-32 lg:py-40">
           <div className="max-w-4xl">
@@ -118,7 +117,6 @@ export default function AboutPage() {
         <div className="about-cta rebel-frame">
           <div className="about-cta-light" aria-hidden="true" />
           <div className="relative z-10"><p className="about-section-label"><Bike className="h-4 w-4" /> Your next chapter starts here</p><h2 className="mt-4 max-w-3xl font-display text-4xl text-white sm:text-6xl">The road is calling.<br />Don&apos;t ride it alone.</h2><p className="mt-5 max-w-xl leading-7 text-[#bca99c]">Join a community that values the journey, the people beside you and the impact left behind.</p><div className="mt-8 flex flex-wrap gap-3"><Button asChild size="lg"><Link href="/join-group">Join Rebels on Roads <ArrowRight className="h-4 w-4" /></Link></Button><Button asChild size="lg" variant="outline"><Link href="/contact">Talk to the team</Link></Button></div></div>
-          <Image src="/images/rebels-on-roads-3d.png" alt="" width={620} height={620} className="about-cta-emblem" aria-hidden="true" />
         </div>
       </section>
 

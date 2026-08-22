@@ -31,7 +31,6 @@ export default async function PartnersPage() {
 
       <section className="partners-hero">
         <div className="partners-hero-lines" aria-hidden="true" />
-        <Image src="/images/rebels-on-roads-3d.png" alt="" fill priority sizes="100vw" className="partners-hero-emblem" aria-hidden="true" />
         <div className="relative z-10 mx-auto max-w-6xl px-4 py-24 sm:py-32">
           <div className="max-w-4xl">
             <p className="partners-label"><Handshake className="h-4 w-4" /> Built together. Driven together.</p>
