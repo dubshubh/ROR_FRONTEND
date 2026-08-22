@@ -28,7 +28,6 @@ export default async function HomePage() {
 
   return <main className="home-page min-h-screen bg-[#070707]"><PublicHeader />
     <section className="home-hero">
-      <div className="home-hero-art" aria-hidden="true" />
       <div className="home-hero-grid" aria-hidden="true" />
       <div className="relative z-10 mx-auto grid min-h-[720px] max-w-6xl gap-12 px-4 py-20 lg:grid-cols-[1.12fr_.88fr] lg:items-center lg:py-28">
         <div className="home-hero-copy"><p className="home-label"><span /> Official riding community · Dehradun</p><h1>Ride with<br /><em>purpose.</em></h1><p>Disciplined formations. Unforgettable roads. A brotherhood built on trust, safety and the stories we bring home.</p><div className="mt-9 flex flex-wrap gap-3"><Button asChild size="lg"><Link href="/join-group">Join the crew <ArrowRight className="h-4 w-4" /></Link></Button><Button asChild size="lg" variant="outline"><Link href="/calendar">Explore road calendar</Link></Button></div><div className="home-hero-proof"><ShieldCheck /><span><strong>Safety-led</strong><small>Every road starts with a briefing</small></span><Users /><span><strong>Community-built</strong><small>No rider left behind</small></span></div></div>

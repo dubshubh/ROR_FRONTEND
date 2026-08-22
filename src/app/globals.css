@@ -66,18 +66,6 @@ body::after {
   mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  z-index: 999;
-  inset: 0;
-  pointer-events: none;
-  background: url("/images/rebels-on-roads-3d.png") center / min(92vw, 1400px) auto no-repeat;
-  opacity: 0.11;
-  mix-blend-mode: screen;
-  filter: saturate(1.15) contrast(1.08);
-}
-
 h1,
 h2,
 h3,
@@ -216,17 +204,6 @@ table thead {
   overflow: clip;
   contain: paint;
   background: #030303;
-}
-
-.hero-3d__emblem {
-  position: absolute;
-  z-index: -2;
-  inset: 0;
-  background: url("/images/rebels-on-roads-3d.png") right center / auto 100% no-repeat;
-  filter: saturate(1.08) contrast(1.06) drop-shadow(-28px 24px 36px rgba(0, 0, 0, 0.8));
-  transform: translate3d(0, 0, 0);
-  animation: emblem-float 8s ease-in-out infinite;
-  will-change: transform;
 }
 
 .hero-3d__shade {
@@ -411,11 +388,9 @@ table thead {
   .road-mission-date { width: 58px; }
 }
 
-body:has(.home-page)::before,
 body:has(.home-page)::after { opacity:0;visibility:hidden }
 .home-page { background:#070707 }
 .home-hero { position:relative;min-height:720px;overflow:hidden;border-bottom:1px solid #612529;background:#050505;isolation:isolate }
-.home-hero-art { position:absolute;z-index:-2;inset:0;background:url("/images/rebels-on-roads-3d.png") 76% center/cover no-repeat;opacity:.48;filter:saturate(.78) contrast(1.14);transform:scale(1.035);animation:home-hero-drift 15s ease-in-out infinite alternate }
 .home-hero::after { content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,#050505 0%,rgba(5,5,5,.92) 39%,rgba(5,5,5,.34) 72%),linear-gradient(0deg,#070707,transparent 30%) }
 .home-hero-grid { position:absolute;inset:0;opacity:.13;background-image:linear-gradient(rgba(255,83,91,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(255,83,91,.16) 1px,transparent 1px);background-size:62px 62px;mask-image:linear-gradient(90deg,#000,transparent 66%) }
 .home-label { display:flex;align-items:center;gap:9px;color:#ff535b;font-family:var(--font-jetbrains),monospace;font-size:9px;font-style:normal;font-weight:700;text-transform:uppercase;letter-spacing:.2em }.home-label>span{width:36px;height:1px;background:#ff535b;box-shadow:0 0 10px #ff535b}
@@ -471,7 +446,8 @@ body:has(.contact-page)::before { opacity: .025; }
 
 body:has(.join-page)::before, body:has(.join-page)::after { opacity: 0; visibility: hidden; }
 .join-hero { position: relative; overflow: hidden; border-bottom: 1px solid #5b2427; background: radial-gradient(circle at 78% 40%, rgba(137,27,32,.18), transparent 30%), linear-gradient(135deg, #0d0b0b, #050505); }
-.join-hero::after { content: "ROR"; position: absolute; right: -1vw; bottom: -52px; color: transparent; font-family: var(--font-anton), Impact, sans-serif; font-size: clamp(150px,25vw,360px); line-height: .8; -webkit-text-stroke: 1px rgba(255,83,91,.07); pointer-events: none; }
+.join-hero::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, #090707 0%, rgba(9,7,7,.94) 39%, rgba(9,7,7,.28) 72%), linear-gradient(0deg, rgba(5,5,5,.78), transparent 34%); pointer-events: none; }
+.join-hero-emblem { position: absolute; inset: 0; z-index: 0; background: url("/images/rebels-on-roads-3d.png") 78% center / cover no-repeat; opacity: .34; filter: saturate(.78) contrast(1.12); transform: scale(1.025); }
 .join-hero-grid { position: absolute; inset: 0; opacity: .17; background-image: linear-gradient(rgba(255,83,91,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,83,91,.14) 1px, transparent 1px); background-size: 52px 52px; mask-image: linear-gradient(90deg, #000, transparent 72%); transform: perspective(600px) rotateX(56deg) scale(1.5) translateY(28%); transform-origin: bottom; }
 .join-label { display: flex; align-items: center; gap: 9px; color: #ff535b; font-family: var(--font-jetbrains), monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .2em; }
 .join-title { color: #eee0d2; font-family: var(--font-anton), Impact, sans-serif; font-size: clamp(3.7rem,8vw,7.2rem); line-height: .88; letter-spacing: -.02em; text-transform: uppercase; }
@@ -547,6 +523,7 @@ body:has(.join-page)::before, body:has(.join-page)::after { opacity: 0; visibili
 .join-success > div:last-child { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 @media (max-width: 1023px) { .join-sidebar { position: static; display: none; } }
 @media (max-width: 640px) { .join-upload-grid { grid-template-columns: 1fr; } .join-submit { grid-template-columns: 1fr; } .join-submit > p, .join-submit > button { grid-column: 1; grid-row: auto; } .join-submit > button { width: 100%; } }
+@media (max-width: 767px) { .join-hero-emblem { background-position: 62% center; opacity: .2; } .join-hero::after { background: linear-gradient(90deg, rgba(9,7,7,.96), rgba(9,7,7,.58)), linear-gradient(0deg, rgba(5,5,5,.8), transparent 34%); } }
 
 .public-header { position: sticky; z-index: 1000; top: 0; border-bottom: 1px solid rgba(150,40,44,.7); background-image: linear-gradient(180deg, rgba(12,12,12,.94), rgba(5,5,5,.96)) !important; box-shadow: 0 10px 32px rgba(0,0,0,.28); backdrop-filter: blur(16px) saturate(1.15); transition: border-color .25s ease, box-shadow .25s ease, background .25s ease; }
 .public-header::after { content: ""; position: absolute; right: 0; bottom: -1px; left: 0; height: 1px; background: linear-gradient(90deg, transparent, #ff535b 28%, #ff535b 72%, transparent); opacity: .55; transform: scaleX(.92); transition: opacity .25s ease, transform .3s ease; }
@@ -750,7 +727,6 @@ body:has(.photography-page)::before, body:has(.photography-page)::after { opacit
 .partners-hero { position: relative; min-height: 680px; overflow: hidden; border-bottom: 1px solid #642327; background: radial-gradient(circle at 78% 42%, #241011 0, #080808 34%, #050505 70%); isolation: isolate; }
 .partners-hero::after { content: ""; position: absolute; inset: auto 0 0; z-index: 1; height: 180px; background: linear-gradient(transparent, #080808); }
 .partners-hero-lines { position: absolute; inset: 0; opacity: .18; background: repeating-linear-gradient(115deg, transparent 0 70px, rgba(255,83,91,.22) 71px, transparent 72px 142px); mask-image: linear-gradient(90deg, transparent 10%, #000 65%, transparent); }
-.partners-hero-emblem { z-index: -1; object-fit: contain; object-position: 88% center; opacity: .27; filter: saturate(.75) contrast(1.2); transform: scale(.82) translateX(16%); animation: partner-emblem 12s ease-in-out infinite alternate; }
 .partners-label { display: flex; align-items: center; gap: 9px; color: #ff535b; font-family: var(--font-jetbrains), monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .2em; }
 .partners-title { color: #e8d9c9; font-family: var(--font-anton), Impact, sans-serif; font-size: clamp(4rem, 8vw, 7.6rem); line-height: .9; letter-spacing: -.025em; text-transform: uppercase; }
 .partners-title span { color: transparent; -webkit-text-stroke: 1px #ff535b; text-shadow: 0 0 34px rgba(255,83,91,.14); }
@@ -807,7 +783,6 @@ body:has(.photography-page)::before, body:has(.photography-page)::after { opacit
 
 @media (max-width: 767px) {
   .partners-hero { min-height: 720px; }
-  .partners-hero-emblem { object-position: 60% 90%; opacity: .17; transform: scale(1.15) translateY(25%); }
   .partners-count { right: auto; bottom: 52px; left: 16px; }
   .partners-section-heading { display: block; }
   .partners-section-heading > p { margin-top: 18px; }
@@ -821,7 +796,6 @@ body:has(.photography-page)::before, body:has(.photography-page)::after { opacit
 .about-hero { position: relative; min-height: 720px; overflow: hidden; border-bottom: 1px solid #6b2024; background: #050505; isolation: isolate; }
 .about-hero::after { content: ""; position: absolute; inset: auto 0 0; z-index: 2; height: 180px; background: linear-gradient(transparent, #080808); pointer-events: none; }
 .about-hero-grid { position: absolute; inset: 0; opacity: .18; background-image: linear-gradient(rgba(255,83,91,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,83,91,.18) 1px, transparent 1px); background-size: 64px 64px; mask-image: linear-gradient(90deg, #000, transparent 75%); transform: perspective(600px) rotateX(58deg) scale(1.45) translateY(22%); transform-origin: bottom; }
-.about-hero-emblem { z-index: -1; object-fit: cover; object-position: 72% center; opacity: .3; filter: saturate(.8) contrast(1.12); transform: scale(1.03); animation: about-drift 14s ease-in-out infinite alternate; }
 .about-hero-glow { position: absolute; z-index: -1; top: 10%; right: 14%; width: 420px; height: 420px; border-radius: 50%; background: rgba(188,24,31,.22); filter: blur(110px); }
 .about-eyebrow, .about-section-label { display: flex; align-items: center; gap: 9px; color: #ff535b; font-family: var(--font-jetbrains), monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .2em; }
 .about-eyebrow > span { width: 42px; height: 1px; background: #ff535b; box-shadow: 0 0 12px #ff535b; }
@@ -876,11 +850,8 @@ body:has(.photography-page)::before, body:has(.photography-page)::after { opacit
 .about-cta-emblem { position: absolute; z-index: -1; top: 50%; right: -4%; width: min(48vw, 540px); opacity: .3; filter: saturate(.75) contrast(1.1); transform: translateY(-50%) rotate(3deg); transition: opacity .4s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
 .about-cta:hover .about-cta-emblem { opacity: .43; transform: translateY(-50%) rotate(0) scale(1.04); }
 
-@keyframes about-drift { from { transform: scale(1.03) translate3d(0,0,0); } to { transform: scale(1.08) translate3d(-1.2%,.8%,0); } }
-
 @media (max-width: 767px) {
   .about-hero { min-height: 680px; }
-  .about-hero-emblem { object-position: 63% center; opacity: .2; }
   .about-manifesto { width: 100%; gap: 12px; justify-content: space-between; margin-top: 55px; }
   .about-founder-visual { margin-right: 22px; }
   .about-founder-stamp { right: -24px; width: 88px; height: 88px; }
