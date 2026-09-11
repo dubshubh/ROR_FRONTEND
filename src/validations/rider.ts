@@ -7,17 +7,12 @@ const booleanFromForm = z.preprocess((value) => {
   if (value === "false") return false;
   return value;
 }, z.boolean());
-const optionalString = z.preprocess((value) => (value === "" ? undefined : value), z.string().trim().min(5).max(30).regex(/^[A-Za-z0-9 -]+$/, "Enter a valid driving licence number").optional());
+const licenseNumber = z.string().trim().min(5, "Enter a valid driving licence number").max(30).regex(/^[A-Za-z0-9 -]+$/, "Enter a valid driving licence number");
 const fileSchema = z
   .any()
   .refine((files) => files?.length === 1, "File is required")
   .refine((files) => files?.[0]?.size <= maxFileSize, "Maximum file size is 5MB")
   .refine((files) => allowedTypes.includes(files?.[0]?.type), "Only jpg, jpeg, png, and pdf are allowed");
-const optionalFileSchema = z
-  .any()
-  .refine((files) => !files?.length || files[0]?.size <= maxFileSize, "Maximum file size is 5MB")
-  .refine((files) => !files?.length || allowedTypes.includes(files[0]?.type), "Only jpg, jpeg, png, and pdf are allowed");
-
 function isAtLeast18(value: string) {
   const dob = new Date(value);
   const today = new Date();
@@ -38,13 +33,13 @@ export const riderRegistrationSchema = z.object({
   bikeModel: z.string().trim().min(1, "Bike model is required").max(100),
   bikeNumber: z.string().trim().min(6, "Enter a valid bike number").max(20).regex(/^[A-Za-z0-9 -]+$/, "Enter a valid bike number"),
   ridingExperience: z.coerce.number().min(0, "Experience cannot be negative").max(80),
-  dlNumber: optionalString,
+  dlNumber: licenseNumber,
   aadhaarNumber: z.string().regex(/^\d{12}$/, "Aadhaar must be exactly 12 digits"),
   joinedOtherGroupBefore: booleanFromForm,
   previousGroupLeaveReason: z.string().trim().max(1000).optional().default(""),
   joinReason: z.string().trim().max(1000).optional().default(""),
-  dlFront: optionalFileSchema,
-  dlBack: optionalFileSchema,
+  dlFront: fileSchema,
+  dlBack: fileSchema,
   aadhaarFront: fileSchema,
   aadhaarBack: fileSchema,
   terms: z.boolean().refine(Boolean, "Accept the terms and conditions")

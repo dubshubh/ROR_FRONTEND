@@ -72,7 +72,7 @@ export default function JoinGroupPage() {
         </FormSection>
 
         <FormSection number="03" icon={Fingerprint} eyebrow="Verification" title="Identity checkpoint.">
-          <div className="join-field-grid sm:grid-cols-2"><FormField label="Driving licence number (optional)" error={errors.dlNumber}><Input placeholder="Licence number" {...register("dlNumber")} /></FormField><FormField label="Aadhaar number" error={errors.aadhaarNumber}><Input inputMode="numeric" placeholder="12-digit number" {...register("aadhaarNumber")} maxLength={12} /></FormField></div>
+          <div className="join-field-grid sm:grid-cols-2"><FormField label="Driving licence number" error={errors.dlNumber}><Input placeholder="Licence number" {...register("dlNumber")} /></FormField><FormField label="Aadhaar number" error={errors.aadhaarNumber}><Input inputMode="numeric" placeholder="12-digit number" {...register("aadhaarNumber")} maxLength={12} /></FormField></div>
         </FormSection>
 
         <FormSection number="04" icon={HeartPulse} eyebrow="Riding history" title="What brings you here?">
@@ -80,7 +80,7 @@ export default function JoinGroupPage() {
         </FormSection>
 
         <FormSection number="05" icon={FileCheck2} eyebrow="Documents" title="Final verification files.">
-          <div className="join-upload-grid">{[["Driving licence · Front (optional)", "dlFront"], ["Driving licence · Back (optional)", "dlBack"], ["Aadhaar · Front", "aadhaarFront"], ["Aadhaar · Back", "aadhaarBack"]].map(([label, name]) => <FormField key={name} label={label} error={fileError(name as keyof RiderRegistrationInput)}><FileUpload {...register(name as keyof RiderRegistrationInput)} /></FormField>)}</div>
+          <div className="join-upload-grid">{[["Driving licence · Front", "dlFront"], ["Driving licence · Back", "dlBack"], ["Aadhaar · Front", "aadhaarFront"], ["Aadhaar · Back", "aadhaarBack"]].map(([label, name]) => <FormField key={name} label={label} error={fileError(name as keyof RiderRegistrationInput)}><FileUpload {...register(name as keyof RiderRegistrationInput)} /></FormField>)}</div>
         </FormSection>
 
         <div className="join-submit"><label><input type="checkbox" {...register("terms")} /><span className="join-check"><Check /></span><span>I consent to membership verification and secure document review by authorized Rebels on Roads administrators.</span></label>{errors.terms ? <p>{errors.terms.message}</p> : null}<Button type="submit" size="lg" disabled={mutation.isPending}><Send className="h-4 w-4" />{mutation.isPending ? "Transmitting application…" : "Submit application"}</Button></div>
