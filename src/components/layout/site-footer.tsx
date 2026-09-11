@@ -39,8 +39,9 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="site-footer-meta">
+        <div className="site-footer-meta flex-wrap max-sm:flex-col max-sm:gap-2.5">
           <p>© {new Date().getFullYear()} Rebels on Roads <i /> Dehradun, India</p>
+          <p className="text-[#a89387]">Developed by Dubey</p>
           <div><span>Official club operations</span><a href="#" aria-label="Back to top">Back to top <ArrowUp className="h-3 w-3" /></a></div>
         </div>
       </div>
