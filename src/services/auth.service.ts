@@ -13,3 +13,25 @@ export async function getCurrentAdmin() {
 export async function logoutAdmin() {
   await api.post("/admin/logout");
 }
+
+export async function forgotPasswordAdmin(payload: { email: string }) {
+  const { data } = await api.post("/admin/forgot-password", payload);
+  return data as {
+    success: boolean;
+    message: string;
+    data?: {
+      devResetUrl?: string;
+      devToken?: string;
+    };
+  };
+}
+
+export async function resetPasswordAdmin(payload: { token: string; password: string }) {
+  const { data } = await api.post("/admin/reset-password", payload);
+  return data as { success: boolean; message: string };
+}
+
+export async function changePasswordAdmin(payload: { currentPassword: string; newPassword: string }) {
+  const { data } = await api.post("/admin/change-password", payload);
+  return data as { success: boolean; message: string };
+}

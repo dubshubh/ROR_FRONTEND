@@ -18,7 +18,7 @@ const config: Config = {
       },
       fontFamily: {
         display: ["var(--font-anton)", "Impact", "sans-serif"],
-        sans: ["var(--font-chivo)", "sans-serif"],
+        sans: ["var(--font-inter)", "sans-serif"],
         mono: ["var(--font-jetbrains)", "monospace"]
       },
       borderRadius: { lg: "0px", md: "0px", sm: "0px" }

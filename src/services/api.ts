@@ -30,7 +30,12 @@ api.interceptors.response.use(
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401 && typeof window !== "undefined") {
       const url = error.config?.url;
-      const isProtectedAdminRequest = url?.startsWith("/admin/") && url !== "/admin/login" && url !== "/admin/me";
+      const isProtectedAdminRequest =
+        url?.startsWith("/admin/") &&
+        url !== "/admin/login" &&
+        url !== "/admin/me" &&
+        url !== "/admin/forgot-password" &&
+        url !== "/admin/reset-password";
       if (isProtectedAdminRequest && window.location.pathname !== "/admin/login") {
         window.location.assign("/admin/login?reason=session-expired");
       }

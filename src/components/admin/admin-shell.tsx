@@ -2,11 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
-import { useState } from "react";
-import { Handshake, LayoutDashboard, LogOut, Mail, PanelsTopLeft, ShieldCheck, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Handshake,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  PanelsTopLeft,
+  Radio,
+  ShieldCheck,
+  Users
+} from "lucide-react";
 import { SiteBrand } from "@/components/layout/site-brand";
 import { Button } from "@/components/ui/button";
+import { ChangePasswordDialog } from "@/components/admin/change-password-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 
@@ -15,14 +25,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const { data } = useSiteSettings();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const navItems = [
     { href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/admin/live-rides", label: "Live Radar", icon: Radio },
     { href: "/admin/riders", label: "Riders", icon: Users },
     { href: "/admin/content", label: "Public Site", icon: PanelsTopLeft },
     { href: "/admin/partner-enquiries", label: "Partners", icon: Handshake },
     { href: "/admin/email-center", label: "Email", icon: Mail }
   ];
+
   const activeItem = navItems.find(({ href }) => pathname === href || pathname.startsWith(`${href}/`)) ?? navItems[0];
 
   useEffect(() => {
@@ -39,7 +52,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="mb-7 border-b border-[#5b403f] pb-6">
           <SiteBrand logo={data?.logo} compact />
         </div>
-        <p className="mb-3 font-mono text-[9px] uppercase tracking-[.2em] text-[#806d63]">Command navigation</p>
+        <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">Command navigation</p>
         <nav className="grid min-h-0 gap-2 overflow-y-auto pr-1">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(`${href}/`);
@@ -50,7 +63,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 className={`admin-nav-link flex items-center gap-3 border px-4 py-3 font-display text-lg uppercase ${
                   isActive
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-transparent text-[#ffdad8] hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                    : "border-transparent text-muted-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground"
                 }`}
                 href={href}
               >
@@ -59,20 +72,51 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="mt-auto grid gap-2 border-t border-[#3d2828] pt-4">
-          <Button variant="secondary" onClick={logout}><LogOut className="h-4 w-4" /> Secure logout</Button>
+        <div className="mt-auto grid gap-2 border-t border-border pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setChangePasswordOpen(true)}
+            className="border-border text-foreground hover:bg-white/5 cursor-pointer justify-start"
+          >
+            <KeyRound className="h-4 w-4 mr-2 text-primary" /> Change Password
+          </Button>
+          <Button variant="secondary" onClick={logout} className="cursor-pointer justify-start">
+            <LogOut className="h-4 w-4 mr-2" /> Secure logout
+          </Button>
         </div>
       </aside>
       <main className="admin-main md:pl-72">
         <header className="sticky top-0 z-30 border-b border-primary bg-[#101010]/95 backdrop-blur-xl md:hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <SiteBrand logo={data?.logo} compact />
-            <Button variant="outline" size="sm" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setChangePasswordOpen(true)}
+                title="Change Admin Password"
+                aria-label="Change Admin Password"
+                className="h-9 w-9 p-0 border-border text-foreground hover:bg-white/5 cursor-pointer"
+              >
+                <KeyRound className="h-4 w-4 text-primary" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                title="Secure logout"
+                aria-label="Secure logout"
+                className="h-9 w-9 p-0 border-border text-foreground hover:bg-white/5 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="border-t border-[#352323] px-4 py-2"><span className="font-mono text-[9px] uppercase tracking-[.15em] text-muted-foreground">Admin control panel</span></div>
-          <nav className="grid grid-cols-5 border-t border-[#5b403f] px-1 py-2 sm:px-2">
+          <div className="border-t border-border px-4 py-2">
+            <span className="font-mono text-xs font-medium text-muted-foreground">Admin Control Panel</span>
+          </div>
+          <nav className="grid grid-cols-6 border-t border-[#5b403f] px-1 py-2 sm:px-2">
             {navItems.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -82,7 +126,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 border px-1 py-2 font-display text-[10px] uppercase sm:flex-row sm:gap-2 sm:px-3 sm:text-base ${
                     isActive
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-transparent text-[#ffdad8]"
+                      : "border-transparent text-muted-foreground"
                   }`}
                   href={href}
                 >
@@ -93,9 +137,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </header>
-        <header className="admin-desktop-bar hidden md:flex"><div><span>Admin workspace</span><strong>{activeItem.label}</strong></div><div><ShieldCheck /><span>Secure session</span></div></header>
+        <header className="admin-desktop-bar hidden md:flex items-center justify-between">
+          <div>
+            <span>Admin workspace</span>
+            <strong>{activeItem.label}</strong>
+          </div>
+          <div>
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Secure session</span>
+          </div>
+        </header>
         <div className="mx-auto w-full max-w-7xl p-4 sm:p-8">{children}</div>
       </main>
+
+      {/* In-Portal Change Password Dialog */}
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
     </div>
   );
 }

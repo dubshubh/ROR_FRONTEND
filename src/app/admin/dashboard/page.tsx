@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCircle2, Clock, PanelsTopLeft, Users, XCircle } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Clock, PanelsTopLeft, Radio, Users, XCircle } from "lucide-react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { LogoUploader } from "@/components/admin/logo-uploader";
 import { CommandCenterEditor } from "@/components/admin/command-center-editor";
@@ -51,10 +51,12 @@ export default function DashboardPage() {
       {isFetching && !isLoading ? (
         <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#ffb3b1]">Syncing command center...</div>
       ) : null}
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <Link href="/admin/live-rides" className="admin-action-card group"><span><Radio className="text-[#ff535b]" /><small>Tactical radar</small><strong>Live Ride Location Tracking</strong><p>Track squad formation on a dark map, manage links & eject riders.</p></span><ArrowRight /></Link>
         <Link href="/admin/content" className="admin-action-card group"><span><PanelsTopLeft /><small>Public website</small><strong>Manage user-facing content</strong><p>Publish rides, events, partners, photos and intercity missions.</p></span><ArrowRight /></Link>
         <Link href="/admin/riders" className="admin-action-card group"><span><CalendarDays /><small>Member operations</small><strong>Review rider applications</strong><p>Approve registrations and maintain your active community roster.</p></span><ArrowRight /></Link>
       </div>
+
       <div className="motion-rise mt-5">
         <div className="grid gap-5 lg:grid-cols-2">
           <CommandCenterEditor values={settings?.commandCenter} />
