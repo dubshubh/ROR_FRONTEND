@@ -1,50 +1,199 @@
-// Browser Web Notifications, Web Audio Synthesizer, and Vibration Engine
+// Cross-Platform Mobile & Desktop Web Notifications, Web Audio Synthesizer, and Vibration Engine
+// Fully compatible with Android (Chrome/Firefox/Samsung), iOS (PWA/Safari 16.4+), and Desktop OSs
 
 export type NotificationPermissionStatus = "granted" | "denied" | "default" | "unsupported";
 
-export function getNotificationPermissionStatus(): NotificationPermissionStatus {
-  if (typeof window === "undefined" || !("Notification" in window)) {
-    return "unsupported";
-  }
-  return Notification.permission;
-}
+let swRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+let sharedAudioCtx: AudioContext | null = null;
 
-export async function requestBrowserNotificationPermission(): Promise<NotificationPermissionStatus> {
-  if (typeof window === "undefined" || !("Notification" in window)) {
-    return "unsupported";
-  }
-
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      playTacticalAlertChime("direction");
-      dispatchBrowserNotification({
-        title: "🏍️ Rebels Live Radar Alerts Enabled",
-        body: "You will now receive tactical route directions, marshal guide alerts, and stop orders even when your screen is locked.",
-        priority: "normal"
-      });
-    }
-    return permission;
-  } catch (err) {
-    console.warn("Failed to request notification permission:", err);
-    return Notification.permission || "denied";
-  }
+/**
+ * Detect Apple iOS devices (iPhone, iPad, iPod)
+ */
+export function isIOS(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 /**
- * Synthesize distinct motorsport alert tones using the browser's built-in Web Audio API.
- * Zero external audio files required, works offline and in background tabs.
+ * Detect Android devices
  */
-export function playTacticalAlertChime(priority: "normal" | "urgent" | "direction" = "normal") {
-  if (typeof window === "undefined") return;
+export function isAndroid(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
+/**
+ * Detect if web app is running in standalone PWA mode (added to Home Screen)
+ */
+export function isStandalonePWA(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    Boolean((navigator as unknown as { standalone?: boolean }).standalone)
+  );
+}
+
+/**
+ * Unlocks the Web Audio API context on mobile touch/click gestures.
+ * Mobile operating systems (iOS and Android) silence Web Audio until the user interacts with the page.
+ */
+export function unlockAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
 
   try {
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
+    if (!AudioCtx) return null;
 
-    const ctx = new AudioCtx();
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new AudioCtx();
+    }
+
+    if (sharedAudioCtx.state === "suspended") {
+      void sharedAudioCtx.resume();
+    }
+
+    return sharedAudioCtx;
+  } catch (err) {
+    console.warn("Could not unlock AudioContext:", err);
+    return null;
+  }
+}
+
+// Auto-attach touch listener to unlock audio on first screen interaction
+if (typeof window !== "undefined") {
+  const handleUserInteraction = () => {
+    unlockAudioContext();
+    window.removeEventListener("touchstart", handleUserInteraction);
+    window.removeEventListener("touchend", handleUserInteraction);
+    window.removeEventListener("pointerdown", handleUserInteraction);
+    window.removeEventListener("click", handleUserInteraction);
+  };
+  window.addEventListener("touchstart", handleUserInteraction, { passive: true, once: true });
+  window.addEventListener("touchend", handleUserInteraction, { passive: true, once: true });
+  window.addEventListener("pointerdown", handleUserInteraction, { passive: true, once: true });
+  window.addEventListener("click", handleUserInteraction, { passive: true, once: true });
+}
+
+/**
+ * Register the Service Worker required for Android Chrome and iOS PWA push alerts.
+ */
+export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+    return null;
+  }
+
+  if (swRegistrationPromise) return swRegistrationPromise;
+
+  swRegistrationPromise = (async () => {
+    try {
+      const existing = await navigator.serviceWorker.getRegistration("/");
+      if (existing) return existing;
+      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      return reg;
+    } catch (err) {
+      console.warn("ServiceWorker registration failed:", err);
+      return null;
+    }
+  })();
+
+  return swRegistrationPromise;
+}
+
+/**
+ * Check current notification permission status with iOS & Android awareness.
+ */
+export function getNotificationPermissionStatus(): NotificationPermissionStatus {
+  if (typeof window === "undefined") return "unsupported";
+
+  // iOS Safari in regular tab (non-PWA) does not expose Notification API
+  if (!("Notification" in window)) {
+    return "unsupported";
+  }
+
+  try {
+    return Notification.permission;
+  } catch {
+    return "unsupported";
+  }
+}
+
+/**
+ * Request system notification permission with universal mobile support:
+ * - Handles both Promise-based and Callback-based Notification.requestPermission()
+ * - Registers Service Worker required by Chrome on Android & iOS PWA
+ * - Unlocks Web Audio chime synthesizer
+ */
+export async function requestBrowserNotificationPermission(): Promise<NotificationPermissionStatus> {
+  if (typeof window === "undefined") return "unsupported";
+
+  // 1. Immediately unlock Web Audio on this user interaction
+  unlockAudioContext();
+
+  // 2. Pre-register Service Worker
+  try {
+    void registerServiceWorker();
+  } catch {}
+
+  // 3. Handle devices where Notification is not available
+  if (!("Notification" in window)) {
+    // If iOS in regular Safari, sound chimes are still supported
+    playTacticalAlertChime("direction");
+    return "unsupported";
+  }
+
+  try {
+    let permission: NotificationPermission = Notification.permission;
+
+    // Cross-browser dual-mode request (supports modern Promise and legacy Callback for older WebKit)
+    if (permission === "default") {
+      try {
+        const promiseResult = Notification.requestPermission();
+        if (promiseResult && typeof promiseResult.then === "function") {
+          permission = await promiseResult;
+        } else {
+          permission = await new Promise<NotificationPermission>((resolve) => {
+            Notification.requestPermission((p) => resolve(p));
+          });
+        }
+      } catch {
+        permission = await new Promise<NotificationPermission>((resolve) => {
+          Notification.requestPermission((p) => resolve(p));
+        });
+      }
+    }
+
+    if (permission === "granted") {
+      playTacticalAlertChime("direction");
+      void dispatchBrowserNotification({
+        title: "🏍️ Rebels Live Radar Alerts Active",
+        body: "Tactical route directions, marshal instructions, and safety alerts are now active.",
+        priority: "normal"
+      });
+    }
+
+    return permission;
+  } catch (err) {
+    console.warn("Failed to request notification permission:", err);
+    return ("Notification" in window && Notification.permission) || "denied";
+  }
+}
+
+/**
+ * Synthesize distinct motorsport alert tones using the browser's built-in Web Audio API.
+ * Zero external audio files required, works offline, on handlebars, and in background tabs.
+ */
+export function playTacticalAlertChime(priority: "normal" | "urgent" | "direction" = "normal") {
+  if (typeof window === "undefined") return;
+
+  try {
+    const ctx = unlockAudioContext();
+    if (!ctx) return;
+
     const now = ctx.currentTime;
 
     if (priority === "urgent") {
@@ -54,7 +203,7 @@ export function playTacticalAlertChime(priority: "normal" | "urgent" | "directio
       osc1.type = "sawtooth";
       osc1.frequency.setValueAtTime(880, now);
       osc1.frequency.setValueAtTime(1320, now + 0.12);
-      gain1.gain.setValueAtTime(0.4, now);
+      gain1.gain.setValueAtTime(0.45, now);
       gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
 
       osc1.connect(gain1);
@@ -68,7 +217,7 @@ export function playTacticalAlertChime(priority: "normal" | "urgent" | "directio
       osc2.type = "sawtooth";
       osc2.frequency.setValueAtTime(1046, now + 0.2);
       osc2.frequency.setValueAtTime(1320, now + 0.3);
-      gain2.gain.setValueAtTime(0.4, now + 0.2);
+      gain2.gain.setValueAtTime(0.45, now + 0.2);
       gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
 
       osc2.connect(gain2);
@@ -84,7 +233,7 @@ export function playTacticalAlertChime(priority: "normal" | "urgent" | "directio
         const gain = ctx.createGain();
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.3, startTime);
+        gain.gain.setValueAtTime(0.35, startTime);
         gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
 
         osc.connect(gain);
@@ -99,7 +248,7 @@ export function playTacticalAlertChime(priority: "normal" | "urgent" | "directio
       osc.type = "sine";
       osc.frequency.setValueAtTime(587.33, now); // D5
       osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
-      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.setValueAtTime(0.3, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
 
       osc.connect(gain);
@@ -108,7 +257,7 @@ export function playTacticalAlertChime(priority: "normal" | "urgent" | "directio
       osc.stop(now + 0.25);
     }
   } catch {
-    // Autoplay policy or unsupported audio context fallback
+    // Autoplay policy fallback
   }
 
   // Device tactile vibration
@@ -133,33 +282,61 @@ export type BrowserNotificationOptions = {
   tag?: string;
   priority?: "normal" | "urgent" | "direction";
   icon?: string;
+  badge?: string;
 };
 
 /**
  * Trigger a native system notification through the browser.
- * Displays as an OS push banner on Android, iOS (PWA), Windows, and macOS.
+ * Uses ServiceWorkerRegistration.showNotification() for Android Chrome & iOS PWA,
+ * with fallback to window.Notification constructor on desktop browsers.
  */
-export function dispatchBrowserNotification(options: BrowserNotificationOptions) {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
-  if (Notification.permission !== "granted") return;
+export async function dispatchBrowserNotification(options: BrowserNotificationOptions) {
+  if (typeof window === "undefined") return;
 
-  try {
-    const isUrgent = options.priority === "urgent";
-    const notification = new Notification(options.title, {
-      body: options.body,
-      icon: options.icon || "/icons/icon-192x192.png",
-      badge: "/icons/badge-72x72.png",
-      tag: options.tag || `ror-alert-${Date.now()}`,
-      requireInteraction: isUrgent, // Keep on screen if urgent until rider dismisses it
-      silent: false
-    });
+  const isUrgent = options.priority === "urgent";
+  const iconUrl = options.icon || "/images/rebels-on-roads-3d.png";
+  const badgeUrl = options.badge || "/images/rebels-on-roads-3d.png";
+  const tag = options.tag || `ror-alert-${Date.now()}`;
+  const vibratePattern = isUrgent ? [300, 100, 300, 100, 400] : [200, 100, 200];
 
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
-  } catch (err) {
-    console.warn("Failed to dispatch browser notification:", err);
+  const notificationOptions = {
+    body: options.body,
+    icon: iconUrl,
+    badge: badgeUrl,
+    tag,
+    vibrate: vibratePattern,
+    requireInteraction: isUrgent,
+    silent: false,
+    data: { url: window.location.href }
+  };
+
+  // METHOD 1 (Primary for Mobile): ServiceWorker showNotification
+  // MANDATORY for Android Chrome and iOS PWA, where `new Notification()` throws an Illegal Constructor error
+  if ("serviceWorker" in navigator) {
+    try {
+      let reg = await registerServiceWorker();
+      if (!reg) {
+        reg = await navigator.serviceWorker.ready;
+      }
+      if (reg && typeof reg.showNotification === "function") {
+        await reg.showNotification(options.title, notificationOptions);
+        return;
+      }
+    } catch (swErr) {
+      console.warn("ServiceWorker showNotification failed, attempting fallback:", swErr);
+    }
+  }
+
+  // METHOD 2 (Fallback for Desktop): Standard window.Notification
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      const notification = new Notification(options.title, notificationOptions);
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    } catch (notifErr) {
+      console.warn("Window Notification constructor failed:", notifErr);
+    }
   }
 }
-

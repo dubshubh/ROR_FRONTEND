@@ -66,6 +66,13 @@ npm test        # Run Vitest tests
 ## Pages
 
 ```text
+/join-group
+/calendar
+/calendar/[id]
+/admin/login
+/admin/dashboard
+/admin/riders
+/admin/riders/[id]
 /                                # Homepage with hero, media carousel, and club stories
 /about                           # Club legacy, leadership, and code of conduct
 /contact                         # Partnership enquiry submission
@@ -87,6 +94,20 @@ npm test        # Run Vitest tests
 
 ## Main Features
 
+- Public rider registration form
+- Interactive road calendar combining events, rides, and intercity missions
+- Dedicated calendar-item briefing pages with route, media, venue, and checkpoint details
+- Aadhaar and optional driving license uploads
+- Admin login
+- Admin dashboard stats
+- Rider search, filter, sorting, and pagination
+- Rider detail review
+- Approve, reject, and delete rider actions
+- CSV and Excel export
+- Admin logo upload
+- Partner enquiry review and status management at `/admin/partner-enquiries`
+- Brevo-backed communication center at `/admin/email-center`
+- Footer social links
 - **Tactical Convoy Radar**:
   - Interactive Leaflet dark-canvas GIS map at `/admin/live-rides/[id]` using dynamically loaded client-only tiles (`next/dynamic` with `ssr: false`).
   - Dynamic `fitBounds` auto-centering around the active fleet formation.

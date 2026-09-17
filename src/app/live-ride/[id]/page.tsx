@@ -20,6 +20,7 @@ import {
   Phone,
   QrCode,
   Radio,
+  RotateCcw,
   Send,
   ShieldAlert,
   ShieldCheck,
@@ -41,7 +42,10 @@ import { Input } from "@/components/ui/input";
 import { useLiveTracking } from "@/hooks/use-live-tracking";
 import {
   getNotificationPermissionStatus,
+  isIOS,
+  isStandalonePWA,
   playTacticalAlertChime,
+  registerServiceWorker,
   requestBrowserNotificationPermission,
   type NotificationPermissionStatus
 } from "@/lib/notifications";
@@ -104,11 +108,13 @@ export default function RiderLiveRidePage() {
   const [broadcastPriority, setBroadcastPriority] = useState<BroadcastMessagePriority>("direction");
   const [dismissedBroadcastId, setDismissedBroadcastId] = useState<string | null>(null);
   const [showCommsLog, setShowCommsLog] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
 
   const tracking = useLiveTracking();
 
   useEffect(() => {
     setNotifPermission(getNotificationPermissionStatus());
+    void registerServiceWorker();
   }, []);
 
   async function handleEnableNotifications() {
@@ -118,6 +124,12 @@ export default function RiderLiveRidePage() {
       toast.success("Live radar push alerts enabled!");
     } else if (perm === "denied") {
       toast.error("Notifications blocked in browser. Please allow them in site settings.");
+    } else if (perm === "unsupported") {
+      if (isIOS() && !isStandalonePWA()) {
+        setShowIosGuide(true);
+      } else {
+        toast.info("Audio chimes and tactile alerts active for your screen.");
+      }
     }
   }
 
@@ -171,9 +183,20 @@ export default function RiderLiveRidePage() {
       const cleanPhone = phone.trim() || undefined;
       const cleanPillionRider = pillionRiderName.trim() || undefined;
 
+      // Auto-detect existing registered squad profile if reconnecting
+      const squad = ride?.registeredBikes || [];
+      const matchedExisting = squad.find((b) => {
+        const normN = normalizeName(cleanRiderName);
+        const normB = cleanBikeNumber ? normalizeBikePlate(cleanBikeNumber) : "";
+        const isNameMatch = normalizeName(b.riderName) === normN;
+        const isPlateMatch = normB && normalizeBikePlate(b.bikeNumber) === normB;
+        return isNameMatch && (isPlateMatch || !normB);
+      });
+      const resolvedParticipantId = matchedExisting?.participantId || participantId || undefined;
+
       if (profileImageFile) {
         const formData = new FormData();
-        if (participantId) formData.append("participantId", participantId);
+        if (resolvedParticipantId) formData.append("participantId", resolvedParticipantId);
         formData.append("riderName", cleanRiderName);
         formData.append("bikeModel", cleanBikeModel);
         if (cleanBikeNumber) formData.append("bikeNumber", cleanBikeNumber);
@@ -185,7 +208,7 @@ export default function RiderLiveRidePage() {
         return joinLiveRide(code, formData);
       }
       return joinLiveRide(code, {
-        participantId: participantId || undefined,
+        participantId: resolvedParticipantId,
         riderName: cleanRiderName,
         bikeModel: cleanBikeModel,
         bikeNumber: cleanBikeNumber,
@@ -881,6 +904,22 @@ export default function RiderLiveRidePage() {
     phoneWarning = "Please enter a valid 10-digit mobile number";
   }
 
+  // Check if user is reconnecting to an existing profile in this squad
+  let matchingRegisteredProfile: (typeof registeredBikes)[number] | null = null;
+  if (normName.length >= 2) {
+    const candidate = registeredBikes.find((b) => {
+      const isSameName = normalizeName(b.riderName) === normName;
+      if (!isSameName) return false;
+      if (normPlate.length >= 3) {
+        return normalizeBikePlate(b.bikeNumber) === normPlate;
+      }
+      return true;
+    });
+    if (candidate) {
+      matchingRegisteredProfile = candidate;
+    }
+  }
+
   let bikePlateError: string | null = null;
   let bikePlateNotice: string | null = null;
 
@@ -892,7 +931,12 @@ export default function RiderLiveRidePage() {
     if (isPillion) {
       const existingPillion = matchingBikes.find((b) => b.isPillion || b.role === "pillion");
       if (existingPillion) {
-        bikePlateError = `Bike ${bikeNumber.trim()} already has a registered pillion passenger (${existingPillion.riderName}). A motorcycle can only carry 1 pillion.`;
+        if (normName && normalizeName(existingPillion.riderName) === normName) {
+          matchingRegisteredProfile = existingPillion;
+          bikePlateNotice = `Existing pillion profile confirmed for ${existingPillion.riderName}. You will be reconnected.`;
+        } else {
+          bikePlateError = `Bike ${bikeNumber.trim()} already has a registered pillion passenger (${existingPillion.riderName}). A motorcycle can only carry 1 pillion.`;
+        }
       } else if (matchingBikes.length >= 2) {
         bikePlateError = `Bike ${bikeNumber.trim()} has reached maximum capacity of 2 riders.`;
       } else if (matchingBikes.length === 1) {
@@ -902,7 +946,12 @@ export default function RiderLiveRidePage() {
     } else {
       const existingSolo = matchingBikes.find((b) => !b.isPillion && b.role !== "pillion");
       if (existingSolo) {
-        bikePlateError = `Bike plate ${bikeNumber.trim()} is already registered by ${existingSolo.riderName}. Two solo riders cannot share the same bike plate. If riding together, switch to 'Pillion Passenger'.`;
+        if (normName && normalizeName(existingSolo.riderName) === normName) {
+          matchingRegisteredProfile = existingSolo;
+          bikePlateNotice = `Existing registration confirmed for ${existingSolo.riderName} (${existingSolo.bikeModel}). You will be reconnected.`;
+        } else {
+          bikePlateError = `Bike plate ${bikeNumber.trim()} is already registered by ${existingSolo.riderName}. Two solo riders cannot share the same bike plate. If riding together, switch to 'Pillion Passenger'.`;
+        }
       } else if (matchingBikes.length >= 2) {
         bikePlateError = `Bike ${bikeNumber.trim()} has reached maximum capacity of 2 riders.`;
       }
@@ -915,7 +964,11 @@ export default function RiderLiveRidePage() {
       (b) => normalizeName(b.riderName) === normName
     );
     if (existingName) {
-      nameWarning = `"${existingName.riderName}" is already in this ride. Please add an initial or nickname (e.g. "${riderName.trim()} S.") to avoid cockpit confusion.`;
+      if (matchingRegisteredProfile && matchingRegisteredProfile.riderName === existingName.riderName) {
+        // Reconnecting to their existing profile, no warning needed
+      } else {
+        nameWarning = `"${existingName.riderName}" is already in this ride. Please add an initial or nickname (e.g. "${riderName.trim()} S.") to avoid cockpit confusion.`;
+      }
     }
   }
 
@@ -999,6 +1052,48 @@ export default function RiderLiveRidePage() {
             }}
             className="space-y-3.5 sm:space-y-4"
           >
+            {/* Returning to this ride? Quick-reconnect helper */}
+            {registeredBikes.length > 0 && (
+              <div className="p-3 bg-[#171111] border border-[#442b2a] rounded-xl space-y-2 font-mono text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wider text-[#ffdad8] font-bold flex items-center gap-1.5">
+                    <RotateCcw className="h-3.5 w-3.5 text-[#ff535b]" /> Returning to this formation?
+                  </span>
+                  <span className="text-[9px] text-[#ff535b] bg-[#361313] border border-[#552323] px-1.5 py-0.5 rounded font-bold">
+                    Quick Reconnect
+                  </span>
+                </div>
+                <select
+                  value={matchingRegisteredProfile?.participantId || ""}
+                  onChange={(e) => {
+                    const pId = e.target.value;
+                    if (pId) {
+                      const profile = registeredBikes.find((b) => b.participantId === pId);
+                      if (profile) {
+                        setRiderName(profile.riderName);
+                        setBikeModel(profile.bikeModel);
+                        if (profile.bikeNumber) setBikeNumber(profile.bikeNumber);
+                        setIsPillion(Boolean(profile.isPillion || profile.role === "pillion"));
+                        if (profile.participantId) setParticipantId(profile.participantId);
+                      }
+                    }
+                  }}
+                  aria-label="Select your registered profile to resume session"
+                  className="w-full h-10 bg-[#0e0a0a] border border-[#552e2e] focus:border-[#ff535b] text-xs text-white font-mono rounded-lg px-2.5 outline-none cursor-pointer"
+                >
+                  <option value="">-- Choose your callsign to auto-fill & reconnect --</option>
+                  {registeredBikes.map((b, idx) => (
+                    <option key={b.participantId || idx} value={b.participantId || ""}>
+                      {b.role === "lead" ? "👑" : b.role === "marshal" ? "🧭" : b.role === "sweeper" ? "🛡️" : b.isPillion ? "👥" : "🏍️"} {b.riderName} — {b.bikeModel} {b.bikeNumber ? `(${b.bikeNumber})` : ""} {b.role ? `[${b.role.toUpperCase()}]` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  Cleared browser or phone rebooted? Select your name to restore your cockpit and role.
+                </p>
+              </div>
+            )}
+
             {/* Participant Role Selector: Solo Rider vs Pillion Passenger */}
             <div className="grid grid-cols-2 gap-2 p-1 bg-[#151010] border border-[#3e2424] rounded-xl font-mono text-xs">
               <button
@@ -1296,6 +1391,24 @@ export default function RiderLiveRidePage() {
               </div>
             )}
 
+            {/* Detected Existing Profile Banner */}
+            {matchingRegisteredProfile && (
+              <div className="p-3 bg-emerald-950/40 border border-emerald-500/60 rounded-xl text-xs text-emerald-200 flex items-start gap-2.5 font-mono animate-in fade-in">
+                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-300 text-[11px]">
+                    <span>PROFILE DETECTED: {matchingRegisteredProfile.riderName.toUpperCase()}</span>
+                    <span className="text-[9px] bg-emerald-900/70 text-emerald-200 px-1.5 py-0.5 rounded border border-emerald-500/50 uppercase">
+                      {matchingRegisteredProfile.role}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                    Existing formation registration confirmed for <strong>{matchingRegisteredProfile.bikeModel}</strong>. Submitting will reconnect your cockpit and resume live GPS telemetry.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Tactical Directions & Briefing Notice */}
             <div className="p-3 bg-[#181111] border border-[#442020] rounded-lg text-xs text-[#cfbeb6] space-y-1 font-mono">
               <div className="flex items-center gap-1.5 font-bold text-[#ffdad8] text-[11px]">
@@ -1357,7 +1470,9 @@ export default function RiderLiveRidePage() {
                 Boolean(nameWarning)
               }
               className={`w-full min-h-[50px] sm:min-h-[54px] h-auto py-3 px-4 font-display text-base sm:text-xl uppercase tracking-wider text-white border rounded-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer ${
-                isPillion
+                matchingRegisteredProfile
+                  ? "bg-emerald-700 hover:bg-emerald-600 border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.35)]"
+                  : isPillion
                   ? "bg-orange-600 hover:bg-orange-500 border-orange-500/60 shadow-[0_0_25px_rgba(234,88,12,0.35)]"
                   : "bg-[#d91b1b] hover:bg-[#b51414] border-red-500/50 shadow-[0_0_25px_rgba(217,27,27,0.35)]"
               }`}
@@ -1365,7 +1480,16 @@ export default function RiderLiveRidePage() {
               {joinMutation.isPending ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
-                  <span className="font-mono text-xs sm:text-sm font-bold tracking-wider">CONNECTING TO RADAR...</span>
+                  <span className="font-mono text-xs sm:text-sm font-bold tracking-wider">
+                    {matchingRegisteredProfile ? "RECONNECTING TO COCKPIT..." : "CONNECTING TO RADAR..."}
+                  </span>
+                </>
+              ) : matchingRegisteredProfile ? (
+                <>
+                  <Radio className="h-4 w-4 sm:h-5 sm:w-5 shrink-0 animate-pulse text-white" />
+                  <span className="truncate">
+                    RECONNECT & RESUME COCKPIT ({matchingRegisteredProfile.role.toUpperCase()})
+                  </span>
                 </>
               ) : isPillion ? (
                 <>
@@ -1382,6 +1506,81 @@ export default function RiderLiveRidePage() {
           </form>
         </Card>
       </div>
+
+      {/* iOS Lock-Screen Push Guide Modal */}
+      {showIosGuide && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowIosGuide(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#140e0e] border-2 border-[#552e2e] rounded-xl p-5 shadow-2xl space-y-4 font-mono text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-[#352020] pb-3">
+              <div className="space-y-0.5">
+                <span className="text-[10px] text-[#ff535b] uppercase font-bold tracking-widest block">
+                  Apple iOS Requirement
+                </span>
+                <h3 className="font-display text-xl text-white">Enable Lock-Screen Alerts</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIosGuide(false)}
+                className="text-muted-foreground hover:text-white p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#cfbeb6] leading-relaxed">
+              Apple requires web apps to be on your Home Screen to display lock-screen push alerts:
+            </p>
+
+            <div className="space-y-2 text-xs">
+              <div className="p-2.5 bg-[#1e1313] border border-[#3e2424] rounded-lg flex items-start gap-2.5">
+                <span className="h-5 w-5 rounded-full bg-[#ff535b]/20 border border-[#ff535b]/40 text-[#ff535b] flex items-center justify-center font-bold shrink-0 text-[11px]">
+                  1
+                </span>
+                <p className="text-[#e2cfb8]">
+                  Tap the <strong className="text-white">Share</strong> button (⎙ at bottom of Safari).
+                </p>
+              </div>
+              <div className="p-2.5 bg-[#1e1313] border border-[#3e2424] rounded-lg flex items-start gap-2.5">
+                <span className="h-5 w-5 rounded-full bg-[#ff535b]/20 border border-[#ff535b]/40 text-[#ff535b] flex items-center justify-center font-bold shrink-0 text-[11px]">
+                  2
+                </span>
+                <p className="text-[#e2cfb8]">
+                  Scroll down and tap <strong className="text-white">Add to Home Screen (+)</strong>.
+                </p>
+              </div>
+              <div className="p-2.5 bg-[#1e1313] border border-[#3e2424] rounded-lg flex items-start gap-2.5">
+                <span className="h-5 w-5 rounded-full bg-[#ff535b]/20 border border-[#ff535b]/40 text-[#ff535b] flex items-center justify-center font-bold shrink-0 text-[11px]">
+                  3
+                </span>
+                <p className="text-[#e2cfb8]">
+                  Open <strong>Rebels Radar</strong> from Home Screen to receive lock-screen alerts!
+                </p>
+              </div>
+            </div>
+
+            <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-lg text-[10px] text-emerald-300 space-y-0.5">
+              <p className="font-bold">✓ Live Audio Chimes Active</p>
+              <p className="text-emerald-300/80">
+                While mounted on handlebars in Safari, loud tactical sound alerts & vibration will still fire automatically!
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => setShowIosGuide(false)}
+              className="w-full bg-[#d91b1b] hover:bg-[#b51414] text-white font-mono text-xs uppercase font-bold py-2.5"
+            >
+              Got It
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Ride QR Code Share Modal */}
       <RideQrDialog

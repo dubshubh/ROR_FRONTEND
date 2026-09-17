@@ -10,7 +10,12 @@ const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrai
 
 export const metadata: Metadata = {
   title: { default: "Rebels on Roads", template: "%s | Rebels on Roads" },
-  description: "Official Rebels on Roads community website, rides, events, photography and rider registration"
+  description: "Official Rebels on Roads community website, rides, events, photography and rider registration",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Rebels Radar"
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

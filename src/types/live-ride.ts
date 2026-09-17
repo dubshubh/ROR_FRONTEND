@@ -66,11 +66,13 @@ export type PublicLiveRide = {
   messages?: BroadcastMessage[];
   activeParticipantsCount?: number | null;
   registeredBikes?: Array<{
+    participantId?: string;
     riderName: string;
     bikeModel: string;
     bikeNumber: string;
     isPillion: boolean;
     role: string;
+    status?: string;
   }>;
 };
 

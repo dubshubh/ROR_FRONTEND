@@ -49,7 +49,10 @@ import { useLiveTracking } from "@/hooks/use-live-tracking";
 import {
   dispatchBrowserNotification,
   getNotificationPermissionStatus,
+  isIOS,
+  isStandalonePWA,
   playTacticalAlertChime,
+  registerServiceWorker,
   requestBrowserNotificationPermission,
   type NotificationPermissionStatus
 } from "@/lib/notifications";
@@ -153,6 +156,7 @@ export default function AdminLiveRideDetailPage() {
 
   useEffect(() => {
     setNotifPermission(getNotificationPermissionStatus());
+    void registerServiceWorker();
   }, []);
 
   async function handleEnableNotifications() {
@@ -162,6 +166,12 @@ export default function AdminLiveRideDetailPage() {
       toast.success("Live radar notifications enabled!");
     } else if (perm === "denied") {
       toast.error("Notifications blocked in browser. Please allow them in site settings.");
+    } else if (perm === "unsupported") {
+      if (isIOS() && !isStandalonePWA()) {
+        toast.info("🍎 On iPhone Safari: Add to Home Screen to enable lock-screen alerts. Screen chimes are active!");
+      } else {
+        toast.info("Tactical audio chimes active for this console.");
+      }
     }
   }
 
