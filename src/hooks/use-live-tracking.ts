@@ -346,30 +346,40 @@ export function useLiveTracking() {
 
         const msgs = res.messages || [];
         const latest = msgs.length ? msgs[msgs.length - 1] : null;
+        const isSentByMe = Boolean(
+          latest &&
+            latest.senderParticipantId &&
+            participantIdRef.current &&
+            String(latest.senderParticipantId) === String(participantIdRef.current)
+        );
 
         if (latest && latest._id && latest._id !== lastNotifiedMsgIdRef.current) {
           lastNotifiedMsgIdRef.current = latest._id;
-          playTacticalChime();
-          const isDirectToMe = Boolean(
-            latest.targetParticipantId && latest.targetParticipantId === participantIdRef.current
-          );
-          const priority = isDirectToMe ? "urgent" : latest.priority || "direction";
-          playTacticalAlertChime(priority);
+          if (!isSentByMe) {
+            playTacticalChime();
+            const isDirectToMe = Boolean(
+              latest.targetParticipantId && String(latest.targetParticipantId) === String(participantIdRef.current)
+            );
+            const priority = isDirectToMe ? "urgent" : latest.priority || "normal";
+            playTacticalAlertChime(priority);
 
-          const title = isDirectToMe
-            ? `🚨 DIRECT ORDER FOR YOU (${latest.senderRole === "lead" ? "Road Captain" : "Marshal"} ${latest.senderName})`
-            : latest.senderRole === "lead"
-            ? `👑 Road Captain: ${latest.senderName}`
-            : latest.senderRole === "marshal"
-            ? `🧭 Marshal Guide: ${latest.senderName}`
-            : `📢 Squad Broadcast: ${latest.senderName}`;
+            const title = isDirectToMe
+              ? `🚨 DIRECT MESSAGE FOR YOU (${latest.senderName})`
+              : latest.senderRole === "lead"
+              ? `👑 Road Captain: ${latest.senderName}`
+              : latest.senderRole === "marshal"
+              ? `🧭 Marshal Guide: ${latest.senderName}`
+              : latest.senderRole === "admin"
+              ? `📡 Admin Command: ${latest.senderName}`
+              : `🏍️ Squad Rider: ${latest.senderName}`;
 
-          dispatchBrowserNotification({
-            title,
-            body: latest.text,
-            priority,
-            tag: latest._id
-          });
+            dispatchBrowserNotification({
+              title,
+              body: latest.text,
+              priority,
+              tag: latest._id
+            });
+          }
         }
 
         const serverOffset = res.serverTime ? Date.parse(res.serverTime) - Date.now() : 0;
@@ -394,7 +404,7 @@ export function useLiveTracking() {
           participants: res.participants && res.participants.length > 0 ? res.participants : prev.participants,
           messages: msgs.length ? msgs : prev.messages,
           quickMessages: res.quickMessages?.length ? res.quickMessages : prev.quickMessages,
-          latestBroadcast: latest || prev.latestBroadcast
+          latestBroadcast: !isSentByMe && latest ? latest : prev.latestBroadcast
         }));
       } catch (err) {
         console.warn("Telemetry broadcast failed, will retry:", err);
@@ -774,11 +784,25 @@ export function useLiveTracking() {
     };
   }, [stopTracking]);
 
+  const appendLocalMessage = useCallback((msg: BroadcastMessage) => {
+    if (msg._id) {
+      lastNotifiedMsgIdRef.current = msg._id;
+    }
+    setState((prev) => {
+      const exists = prev.messages.some((m) => m._id && m._id === msg._id);
+      return {
+        ...prev,
+        messages: exists ? prev.messages : [...prev.messages, msg]
+      };
+    });
+  }, []);
+
   return {
     ...state,
     startTracking,
     stopTracking,
     setManualLocation,
-    refreshExactGps
+    refreshExactGps,
+    appendLocalMessage
   };
 }

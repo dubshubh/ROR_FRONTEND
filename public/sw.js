@@ -15,6 +15,7 @@ async function sendBackgroundHeartbeat() {
   }
   try {
     await fetch(
+      `${bgTrackingState.apiBaseUrl}/live-rides/${bgTrackingState.code}/location`,
       `${bgTrackingState.apiBaseUrl}/live-rides/${bgTrackingState.code}/ping`,
       {
         method: "POST",

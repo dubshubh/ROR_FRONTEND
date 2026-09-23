@@ -5,7 +5,7 @@ export type BroadcastMessagePriority = "normal" | "urgent" | "direction";
 
 export type BroadcastMessage = {
   _id?: string;
-  senderRole: "lead" | "marshal" | "admin";
+  senderRole: "lead" | "marshal" | "sweeper" | "rider" | "pillion" | "admin";
   senderName: string;
   senderParticipantId?: string;
   text: string;

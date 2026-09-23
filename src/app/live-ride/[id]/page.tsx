@@ -89,6 +89,15 @@ const DEFAULT_QUICK_MESSAGES = [
   "🚨 Pull over on shoulder"
 ];
 
+const DEFAULT_RIDER_QUICK_MESSAGES = [
+  "👍 All good / In formation",
+  "⛽ Need fuel stop soon",
+  "⏸️ Pulling over briefly — wait up",
+  "⚠️ Hazard / obstacle on road ahead",
+  "🐢 Slowing down / traffic ahead",
+  "🚨 Need assistance / mechanical issue"
+];
+
 function normalizePhone(p: string | undefined | null): string {
   if (!p) return "";
   return p.replace(/[^0-9]/g, "").trim();
@@ -125,11 +134,13 @@ export default function RiderLiveRidePage() {
   const [showRiderQr, setShowRiderQr] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Broadcast messaging state
+  // Broadcast & Squad Chat messaging state
   const [customBroadcastText, setCustomBroadcastText] = useState("");
-  const [broadcastPriority, setBroadcastPriority] = useState<BroadcastMessagePriority>("direction");
+  const [broadcastPriority, setBroadcastPriority] = useState<BroadcastMessagePriority>("normal");
+  const [riderTargetId, setRiderTargetId] = useState<string>("all");
+  const [showQuickChips, setShowQuickChips] = useState(true);
   const [dismissedBroadcastId, setDismissedBroadcastId] = useState<string | null>(null);
-  const [showCommsLog, setShowCommsLog] = useState(false);
+  const [showCommsLog, setShowCommsLog] = useState(true);
   const [showIosGuide, setShowIosGuide] = useState(false);
   const [cockpitView, setCockpitView] = useState<"map" | "gauge">("map");
   const [selectedRadarRiderId, setSelectedRadarRiderId] = useState<string | null>(null);
@@ -299,10 +310,28 @@ export default function RiderLiveRidePage() {
   });
 
   const broadcastMutation = useMutation({
-    mutationFn: ({ text, priority }: { text: string; priority?: BroadcastMessagePriority }) =>
-      sendRiderBroadcastMessage(code, { participantId: participantId!, text, priority }),
-    onSuccess: () => {
-      toast.success("Broadcast sent to all squad riders!");
+    mutationFn: ({
+      text,
+      priority,
+      targetParticipantId
+    }: {
+      text: string;
+      priority?: BroadcastMessagePriority;
+      targetParticipantId?: string;
+    }) =>
+      sendRiderBroadcastMessage(code, {
+        participantId: participantId!,
+        text,
+        priority,
+        targetParticipantId: targetParticipantId && targetParticipantId !== "all" ? targetParticipantId : undefined
+      }),
+    onSuccess: (newMsg) => {
+      tracking.appendLocalMessage(newMsg);
+      toast.success(
+        newMsg.targetRiderName
+          ? `Direct message sent to ${newMsg.targetRiderName}!`
+          : "Message transmitted to all squad riders!"
+      );
       setCustomBroadcastText("");
     },
     onError: (err) => toast.error(apiErrorMessage(err))
@@ -721,9 +750,13 @@ export default function RiderLiveRidePage() {
                   <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 flex items-center gap-1">
                     <Compass className="h-3 w-3 text-[#00f0ff]" /> Direction Marshal
                   </span>
+                ) : activeBroadcast.senderRole === "admin" ? (
+                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/50 flex items-center gap-1">
+                    <Radio className="h-3 w-3 text-[#ff535b]" /> Command HQ
+                  </span>
                 ) : (
-                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1">
-                    <Radio className="h-3 w-3 text-[#ff535b]" /> Dispatch
+                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1">
+                    <Radio className="h-3 w-3 text-emerald-400" /> Squad Rider
                   </span>
                 )}
                 <span className="font-mono text-xs text-white font-semibold truncate max-w-[120px]">
@@ -853,175 +886,290 @@ export default function RiderLiveRidePage() {
             </div>
           )}
 
-          {/* MARSHAL / LEAD DIRECTION BROADCAST DESK (Tactical 1-Tap Broadcaster) */}
-          {isMarshalOrLead && (
-            <Card className="p-3.5 sm:p-4 border-[#1c3e4a] bg-[#0c171c]/95 rounded-xl shadow-2xl space-y-3">
-              <div className="flex items-center justify-between border-b border-[#1c3e4a] pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00f0ff] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#00f0ff]"></span>
-                  </span>
-                  <h3 className="font-display text-base sm:text-lg text-white tracking-wide flex items-center gap-1.5">
-                    <Compass className="h-4 w-4 text-[#00f0ff]" />
-                    {tracking.role === "lead" ? "Captain Tactical Desk" : "Marshal Direction Desk"}
-                  </h3>
-                </div>
-                <span className="text-[9px] font-mono uppercase bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 px-2 py-0.5 rounded">
-                  1-Tap Live Transmit
-                </span>
-              </div>
-
-              <p className="text-[11px] font-mono text-[#a2d8e6] leading-relaxed">
-                Tap any button to instantly chime and beam tactical directions to all riders&apos; cockpit screens:
-              </p>
-
-              {/* 1-Tap Quick Action Buttons Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {quickList.map((msg, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    disabled={broadcastMutation.isPending}
-                    onClick={() => broadcastMutation.mutate({ text: msg, priority: "direction" })}
-                    className="text-left p-2.5 rounded-lg bg-[#11232c] hover:bg-[#183442] active:scale-[0.97] border border-[#234c5c] hover:border-[#00f0ff] text-xs text-[#dff7fd] font-mono transition-all flex items-center justify-between group min-h-[44px] cursor-pointer"
-                  >
-                    <span className="truncate pr-2 font-medium">{msg}</span>
-                    <Send className="h-3.5 w-3.5 text-[#00f0ff] opacity-70 group-hover:opacity-100 shrink-0" />
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom Message Input */}
-              <div className="pt-2 border-t border-[#1c3e4a] space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    value={customBroadcastText}
-                    onChange={(e) => setCustomBroadcastText(e.target.value)}
-                    placeholder="Custom direction note (e.g. Next flyover right, wait at toll)"
-                    className="h-10 sm:h-11 text-xs bg-[#0f1d24] border-[#224452] text-white font-mono placeholder:text-muted-foreground focus:border-[#00f0ff]"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && customBroadcastText.trim()) {
-                        e.preventDefault();
-                        broadcastMutation.mutate({ text: customBroadcastText.trim(), priority: broadcastPriority });
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    disabled={broadcastMutation.isPending || !customBroadcastText.trim()}
-                    onClick={() =>
-                      broadcastMutation.mutate({ text: customBroadcastText.trim(), priority: broadcastPriority })
-                    }
-                    className="h-10 sm:h-11 px-3 sm:px-4 bg-[#00f0ff] hover:bg-[#00d0e0] text-[#051a22] font-mono text-xs uppercase font-bold tracking-wider shrink-0 cursor-pointer shadow-[0_0_15px_rgba(0,240,255,0.3)]"
-                  >
-                    {broadcastMutation.isPending ? (
-                      <div className="h-4 w-4 border-2 border-[#051a22] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-3.5 w-3.5 mr-1" /> Transmit
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Priority Picker */}
-                <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-muted-foreground uppercase">Alert Type:</span>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    {(["direction", "urgent", "normal"] as const).map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setBroadcastPriority(p)}
-                        className={`px-2 py-0.5 rounded uppercase font-mono cursor-pointer transition ${
-                          broadcastPriority === p
-                            ? p === "urgent"
-                              ? "bg-red-500/30 text-red-300 border border-red-500 font-bold"
-                              : p === "direction"
-                              ? "bg-[#00f0ff]/30 text-[#00f0ff] border border-[#00f0ff] font-bold"
-                              : "bg-white/20 text-white border border-white/40 font-bold"
-                            : "text-muted-foreground hover:text-white"
-                        }`}
-                      >
-                        {p === "direction" ? "🧭 Direction" : p === "urgent" ? "⚠️ Urgent" : "ℹ️ Info"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {/* SQUAD COMMS FEED (Collapsible History) */}
-          <div className="bg-[#121010] border border-[#3e2424] rounded-xl overflow-hidden font-mono text-xs">
-            <button
-              type="button"
-              onClick={() => setShowCommsLog(!showCommsLog)}
-              className="w-full p-3 flex items-center justify-between text-left hover:bg-[#1a1414] transition cursor-pointer"
-            >
+          {/* UNIFIED SQUAD LIVE COMMS & CHAT DESK (For All Riders, Marshals & Captain) */}
+          <Card className="p-3.5 sm:p-4 border-[#1c3e4a] bg-[#0c171c]/95 rounded-xl shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-[#1c3e4a] pb-2.5 gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <Radio className="h-4 w-4 text-[#ff535b]" />
-                <span className="font-bold text-[#ffdad8] uppercase tracking-wider text-[11px]">
-                  Squad Comms Feed ({messageList.length})
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                </span>
+                <h3 className="font-display text-base sm:text-lg text-white tracking-wide flex items-center gap-1.5">
+                  <Radio className="h-4 w-4 text-[#00f0ff]" />
+                  {tracking.role === "lead"
+                    ? "Captain Tactical Comms"
+                    : tracking.role === "marshal"
+                    ? "Marshal Comms Desk"
+                    : "Squad Live Radio & Chat"}
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickChips(!showQuickChips)}
+                  className="text-[10px] font-mono uppercase bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/30 px-2 py-0.5 rounded transition cursor-pointer"
+                >
+                  {showQuickChips ? "Hide Presets" : "1-Tap Presets"}
+                </button>
+                <span className="text-[9px] font-mono uppercase bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded">
+                  All Riders Live
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground text-[10px]">
-                <span>{showCommsLog ? "Hide" : "Review All"}</span>
-                {showCommsLog ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              </div>
-            </button>
+            </div>
 
-            {showCommsLog && (
-              <div className="p-3 pt-0 border-t border-[#2e1a1a] space-y-2 max-h-56 overflow-y-auto">
-                {messageList.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground text-center py-4">
-                    No tactical broadcasts logged yet. Standby for directions from Road Captain or Marshals.
-                  </p>
-                ) : (
-                  [...messageList].reverse().map((msg, idx) => (
-                    <div
-                      key={msg._id || idx}
-                      className={`p-2.5 rounded-lg border text-xs space-y-1 ${
-                        msg.targetParticipantId === participantId
-                          ? "bg-amber-950/40 border-amber-500/50 text-amber-200"
-                          : msg.priority === "urgent"
-                          ? "bg-red-950/30 border-red-600/40 text-red-200"
-                          : msg.priority === "direction"
-                          ? "bg-[#091b24] border-[#00f0ff]/30 text-[#d3f4fc]"
-                          : "bg-[#181414] border-[#362424] text-[#ffdad8]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-[10px]">
-                        <div className="flex items-center gap-1.5">
-                          {msg.targetParticipantId === participantId ? (
-                            <span className="text-amber-300 font-bold flex items-center gap-0.5">
-                              <Crown className="h-2.5 w-2.5 text-[#ffd700]" /> Whisper For You
-                            </span>
-                          ) : msg.senderRole === "lead" ? (
-                            <span className="text-amber-300 font-bold flex items-center gap-0.5">
-                              <Crown className="h-2.5 w-2.5 text-[#ffd700]" /> Captain
-                            </span>
-                          ) : msg.senderRole === "marshal" ? (
-                            <span className="text-[#00f0ff] font-bold flex items-center gap-0.5">
-                              <Compass className="h-2.5 w-2.5 text-[#00f0ff]" /> Marshal
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">Squad</span>
-                          )}
-                          <span className="font-semibold text-white">{msg.senderName}</span>
-                        </div>
-                        <span className="text-muted-foreground">
-                          {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </div>
-                      <p className="font-sans font-medium text-white">{msg.text}</p>
-                    </div>
-                  ))
-                )}
+            {/* Target Recipient Selector (All Squad vs Direct Whisper) */}
+            <div className="flex items-center justify-between gap-2 bg-[#091318] border border-[#1c3e4a] rounded-lg px-2.5 py-1.5 font-mono text-xs">
+              <span className="text-[10px] uppercase font-bold text-[#8ab8c7] shrink-0">Send To:</span>
+              <select
+                value={riderTargetId}
+                onChange={(e) => setRiderTargetId(e.target.value)}
+                aria-label="Message Recipient"
+                className="flex-1 bg-transparent text-xs font-mono text-white outline-none cursor-pointer truncate font-semibold"
+              >
+                <option value="all" className="bg-[#0b161c] text-white">
+                  👥 Entire Formation (Shown to All Riders & Admin)
+                </option>
+                {squadParticipants
+                  .filter((p) => p._id !== participantId && p.status !== "ejected" && p.status !== "left")
+                  .map((p) => (
+                    <option key={p._id} value={p._id} className="bg-[#0b161c] text-white">
+                      🎯 Direct Whisper: {p.riderName} ({p.role === "lead" ? "Captain" : p.role === "marshal" ? "Marshal" : p.bikeModel})
+                    </option>
+                  ))}
+              </select>
+              {riderTargetId !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setRiderTargetId("all")}
+                  className="text-[10px] text-amber-400 hover:text-white underline shrink-0 cursor-pointer"
+                >
+                  Reset to All
+                </button>
+              )}
+            </div>
+
+            {/* 1-Tap Quick Action Buttons Grid (Shown for ALL riders) */}
+            {showQuickChips && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-mono text-[#8ab8c7] uppercase tracking-wider">
+                  1-Tap Instant Transmit ({riderTargetId === "all" ? "Broadcasts to All Riders" : "Direct Whisper"}):
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-0.5">
+                  {(isMarshalOrLead ? quickList : DEFAULT_RIDER_QUICK_MESSAGES).map((msg, idx) => {
+                    const autoPriority: BroadcastMessagePriority =
+                      msg.includes("🚨") || msg.includes("⚠️") || msg.includes("🛑")
+                        ? "urgent"
+                        : msg.includes("➡️") || msg.includes("⬅️")
+                        ? "direction"
+                        : "normal";
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={broadcastMutation.isPending}
+                        onClick={() =>
+                          broadcastMutation.mutate({
+                            text: msg,
+                            priority: autoPriority,
+                            targetParticipantId: riderTargetId
+                          })
+                        }
+                        className="text-left p-2 rounded-lg bg-[#11232c] hover:bg-[#183442] active:scale-[0.98] border border-[#234c5c] hover:border-[#00f0ff] text-xs text-[#dff7fd] font-mono transition-all flex items-center justify-between group cursor-pointer"
+                      >
+                        <span className="truncate pr-2 font-medium">{msg}</span>
+                        <Send className="h-3 w-3 text-[#00f0ff] opacity-70 group-hover:opacity-100 shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
-          </div>
+
+            {/* Custom Message Composer */}
+            <div className="pt-2 border-t border-[#1c3e4a] space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={customBroadcastText}
+                  onChange={(e) => setCustomBroadcastText(e.target.value)}
+                  placeholder={
+                    riderTargetId === "all"
+                      ? "Write message to all riders & captain... (Enter ↵)"
+                      : "Write direct message to selected rider... (Enter ↵)"
+                  }
+                  className="h-10 sm:h-11 text-xs bg-[#0f1d24] border-[#224452] text-white font-mono placeholder:text-muted-foreground focus:border-[#00f0ff]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customBroadcastText.trim()) {
+                      e.preventDefault();
+                      broadcastMutation.mutate({
+                        text: customBroadcastText.trim(),
+                        priority: broadcastPriority,
+                        targetParticipantId: riderTargetId
+                      });
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  disabled={broadcastMutation.isPending || !customBroadcastText.trim()}
+                  onClick={() =>
+                    broadcastMutation.mutate({
+                      text: customBroadcastText.trim(),
+                      priority: broadcastPriority,
+                      targetParticipantId: riderTargetId
+                    })
+                  }
+                  className="h-10 sm:h-11 px-3 sm:px-4 bg-[#00f0ff] hover:bg-[#00d0e0] text-[#051a22] font-mono text-xs uppercase font-bold tracking-wider shrink-0 cursor-pointer shadow-[0_0_15px_rgba(0,240,255,0.3)]"
+                >
+                  {broadcastMutation.isPending ? (
+                    <div className="h-4 w-4 border-2 border-[#051a22] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5 mr-1" /> Send
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Priority Picker */}
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground uppercase">Message Type:</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {(["normal", "direction", "urgent"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setBroadcastPriority(p)}
+                      className={`px-2 py-0.5 rounded uppercase font-mono cursor-pointer transition ${
+                        broadcastPriority === p
+                          ? p === "urgent"
+                            ? "bg-red-500/30 text-red-300 border border-red-500 font-bold"
+                            : p === "direction"
+                            ? "bg-[#00f0ff]/30 text-[#00f0ff] border border-[#00f0ff] font-bold"
+                            : "bg-emerald-500/30 text-emerald-200 border border-emerald-400 font-bold"
+                          : "text-muted-foreground hover:text-white"
+                      }`}
+                    >
+                      {p === "normal" ? "💬 Squad Chat" : p === "direction" ? "🧭 Route/Info" : "🚨 Urgent/SOS"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* LIVE SQUAD COMMS FEED (Shows All Riders, Marshals, Captain & Admin Messages) */}
+            <div className="bg-[#091216] border border-[#1c3e4a] rounded-xl overflow-hidden font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => setShowCommsLog(!showCommsLog)}
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-[#0e1b22] transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Radio className="h-3.5 w-3.5 text-[#00f0ff]" />
+                  <span className="font-bold text-[#dff7fd] uppercase tracking-wider text-[11px]">
+                    Live Squad Messages ({messageList.length})
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground text-[10px]">
+                  <span>{showCommsLog ? "Collapse" : "Show Messages"}</span>
+                  {showCommsLog ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </div>
+              </button>
+
+              {showCommsLog && (
+                <div className="p-2.5 pt-1 border-t border-[#162d38] space-y-2 max-h-64 overflow-y-auto">
+                  {messageList.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground text-center py-4">
+                      No messages yet. Send a message above or tap a preset chip to broadcast to all riders!
+                    </p>
+                  ) : (
+                    [...messageList].reverse().map((msg, idx) => {
+                      const isFromMe = Boolean(
+                        msg.senderParticipantId && String(msg.senderParticipantId) === String(participantId)
+                      );
+                      return (
+                        <div
+                          key={msg._id || idx}
+                          className={`p-2.5 rounded-lg border text-xs space-y-1 ${
+                            msg.targetParticipantId === participantId
+                              ? "bg-amber-950/40 border-amber-500/50 text-amber-200"
+                              : isFromMe
+                              ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-100"
+                              : msg.priority === "urgent"
+                              ? "bg-red-950/30 border-red-600/40 text-red-200"
+                              : msg.priority === "direction"
+                              ? "bg-[#091b24] border-[#00f0ff]/30 text-[#d3f4fc]"
+                              : "bg-[#121c22] border-[#223944] text-white"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[10px] gap-1 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {msg.targetParticipantId === participantId ? (
+                                <span className="text-amber-300 font-bold flex items-center gap-0.5 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-400/40">
+                                  🎯 Whisper For You
+                                </span>
+                              ) : msg.targetRiderName ? (
+                                <span className="text-amber-300 font-bold flex items-center gap-0.5 bg-amber-500/15 px-1.5 py-0.5 rounded">
+                                  🎯 To {msg.targetRiderName}
+                                </span>
+                              ) : null}
+
+                              {msg.senderRole === "lead" ? (
+                                <span className="text-amber-300 font-bold flex items-center gap-0.5">
+                                  <Crown className="h-2.5 w-2.5 text-[#ffd700]" /> Captain
+                                </span>
+                              ) : msg.senderRole === "marshal" ? (
+                                <span className="text-[#00f0ff] font-bold flex items-center gap-0.5">
+                                  <Compass className="h-2.5 w-2.5 text-[#00f0ff]" /> Marshal
+                                </span>
+                              ) : msg.senderRole === "admin" ? (
+                                <span className="text-[#ff535b] font-bold flex items-center gap-0.5">
+                                  <Radio className="h-2.5 w-2.5 text-[#ff535b]" /> Admin
+                                </span>
+                              ) : msg.senderRole === "sweeper" ? (
+                                <span className="text-purple-300 font-bold flex items-center gap-0.5">
+                                  🧹 Sweeper
+                                </span>
+                              ) : msg.senderRole === "pillion" ? (
+                                <span className="text-orange-300 font-bold flex items-center gap-0.5">
+                                  🪖 Pillion
+                                </span>
+                              ) : (
+                                <span className="text-emerald-300 font-bold flex items-center gap-0.5">
+                                  🏍️ Rider
+                                </span>
+                              )}
+
+                              <span className="font-semibold text-white">
+                                {msg.senderName} {isFromMe ? "(You)" : ""}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {!isFromMe && msg.senderParticipantId && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRiderTargetId(String(msg.senderParticipantId))}
+                                  className="text-[9px] text-[#00f0ff] hover:underline cursor-pointer"
+                                  title={`Reply directly to ${msg.senderName}`}
+                                >
+                                  ↩️ Reply
+                                </button>
+                              )}
+                              <span className="text-muted-foreground">
+                                {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="font-sans font-medium text-white break-words">{msg.text}</p>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* System Indicators */}
           <div className="bg-[#151010] border border-[#442b2a] p-3.5 sm:p-4 rounded-xl space-y-2 text-xs font-mono">

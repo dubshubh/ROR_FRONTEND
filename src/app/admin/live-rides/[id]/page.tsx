@@ -261,6 +261,12 @@ export default function AdminLiveRideDetailPage() {
       targetParticipantId?: string;
     }) => sendAdminBroadcastMessage(id, { text, priority, targetParticipantId }),
     onSuccess: (msg) => {
+      if (msg.sentAt) {
+        lastSeenMsgTimestampRef.current = Math.max(
+          lastSeenMsgTimestampRef.current,
+          new Date(msg.sentAt).getTime()
+        );
+      }
       void queryClient.invalidateQueries({ queryKey: ["admin-live-ride", id] });
       setCustomBroadcastText("");
       setCustomDirectMessageText("");
@@ -1747,9 +1753,21 @@ export default function AdminLiveRideDetailPage() {
                               <span className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded">
                                 <Shield className="h-2.5 w-2.5" /> Marshal
                               </span>
-                            ) : (
+                            ) : msg.senderRole === "admin" ? (
                               <span className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase bg-primary/10 text-primary border border-primary/30 px-1.5 py-0.5 rounded">
                                 <Radio className="h-2.5 w-2.5" /> Admin
+                              </span>
+                            ) : msg.senderRole === "sweeper" ? (
+                              <span className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase bg-purple-950/60 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded">
+                                🧹 Sweeper
+                              </span>
+                            ) : msg.senderRole === "pillion" ? (
+                              <span className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase bg-orange-950/60 text-orange-300 border border-orange-500/40 px-1.5 py-0.5 rounded">
+                                🪖 Pillion
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded">
+                                🏍️ Rider
                               </span>
                             )}
                             <span className="font-sans font-bold text-foreground text-xs truncate max-w-[120px]">
@@ -1761,9 +1779,21 @@ export default function AdminLiveRideDetailPage() {
                               </span>
                             ) : null}
                           </div>
-                          <span className="font-mono text-xs text-muted-foreground shrink-0">
-                            {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {msg.senderParticipantId && (
+                              <button
+                                type="button"
+                                onClick={() => setBroadcastTargetId(String(msg.senderParticipantId))}
+                                className="font-mono text-[10px] text-cyan-400 hover:underline cursor-pointer"
+                                title={`Reply directly to ${msg.senderName}`}
+                              >
+                                ↩️ Reply
+                              </button>
+                            )}
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                            </span>
+                          </div>
                         </div>
                         <p className="font-sans text-xs sm:text-sm text-foreground leading-relaxed break-words font-medium">
                           {msg.text}
