@@ -276,7 +276,7 @@ export function useLiveTracking() {
     setState((prev) => ({ ...prev, wakeLockActive: false }));
   }, []);
 
-  const stopTracking = useCallback(() => {
+  const stopTracking = useCallback((explicitExit = false) => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
@@ -285,15 +285,22 @@ export function useLiveTracking() {
       clearInterval(heartbeatTimerRef.current);
       heartbeatTimerRef.current = null;
     }
-    try {
-      if (typeof navigator !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: "STOP_GPS_SYNC" });
-      }
-    } catch {}
+    if (explicitExit) {
+      try {
+        if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+          void navigator.serviceWorker.ready.then((reg) => {
+            reg.active?.postMessage({ type: "STOP_GPS_SYNC" });
+          });
+        }
+      } catch {}
+    } else {
+      // Browser tab closed or navigated away without clicking Exit: keep Service Worker background GPS alive!
+      syncServiceWorkerState();
+    }
     releaseWakeLock();
     stopSilentAudio();
     setState((prev) => ({ ...prev, isTracking: false }));
-  }, [releaseWakeLock, stopSilentAudio]);
+  }, [releaseWakeLock, stopSilentAudio, syncServiceWorkerState]);
 
   const sendTelemetry = useCallback(
     async (
@@ -330,11 +337,11 @@ export function useLiveTracking() {
         });
 
         if (res.rideStatus === "completed") {
-          stopTracking();
+          stopTracking(true);
           setState((prev) => ({ ...prev, completed: true }));
           return;
         } else if (res.participantStatus === "ejected") {
-          stopTracking();
+          stopTracking(true);
           try {
             if (codeRef.current) {
               localStorage.removeItem(`ror_live_session_${codeRef.current}`);
@@ -780,7 +787,7 @@ export function useLiveTracking() {
 
   useEffect(() => {
     return () => {
-      stopTracking();
+      stopTracking(false);
     };
   }, [stopTracking]);
 

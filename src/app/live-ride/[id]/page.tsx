@@ -298,7 +298,7 @@ export default function RiderLiveRidePage() {
   const leaveMutation = useMutation({
     mutationFn: () => leaveLiveRide(code, participantId!),
     onSuccess: () => {
-      tracking.stopTracking();
+      tracking.stopTracking(true);
       setParticipantId(null);
       try {
         localStorage.removeItem(`ror_live_session_${code}`);

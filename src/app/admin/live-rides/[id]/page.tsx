@@ -1487,7 +1487,7 @@ export default function AdminLiveRideDetailPage() {
                             </div>
                           </div>
 
-                          {/* Granular Rider Action Controls */}
+                          {/* Granular Rider Action Controls (Privacy-Safe: No Admin Profile Editing or Force-Activation of Other Riders) */}
                           {!isEjected && !isLeft ? (
                             <div className="mt-2 pt-1.5 border-t border-border flex flex-wrap items-center justify-between gap-1">
                               <div className="flex items-center gap-1 flex-wrap">
@@ -1502,23 +1502,16 @@ export default function AdminLiveRideDetailPage() {
                                   Focus
                                 </button>
 
-                                <button
-                                  type="button"
-                                  onClick={() => activateParticipantMutation.mutate({ targetId: p._id })}
-                                  className="text-xs font-mono uppercase px-2 py-0.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded transition cursor-pointer"
-                                  title="Force sync / activate this participant as Live"
-                                >
-                                  ⚡ Sync Live
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => openEditProfile(p)}
-                                  className="text-xs font-mono uppercase px-2 py-0.5 bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40 rounded transition flex items-center gap-1 cursor-pointer"
-                                  title="Edit rider profile, bike details, and photo"
-                                >
-                                  <Edit3 className="h-3 w-3" /> Profile
-                                </button>
+                                {isLead && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditProfile("lead")}
+                                    className="text-xs font-mono uppercase px-2 py-0.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded transition flex items-center gap-1 cursor-pointer"
+                                    title="Edit your own Road Captain (Leader) profile"
+                                  >
+                                    <Edit3 className="h-3 w-3" /> My Leader Profile
+                                  </button>
+                                )}
 
                                 <button
                                   type="button"
@@ -1529,63 +1522,42 @@ export default function AdminLiveRideDetailPage() {
                                   <MessageSquare className="h-3 w-3 text-emerald-400" /> Whisper
                                 </button>
 
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextRole: ParticipantRole = isMarshal ? "rider" : "marshal";
-                                    roleMutation.mutate({ participantId: p._id, role: nextRole });
-                                  }}
-                                  className={`text-xs font-mono uppercase px-2 py-0.5 rounded transition border ${
-                                    isMarshal
-                                      ? "bg-cyan-950/50 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/50"
-                                      : "bg-white/5 text-muted-foreground border-border hover:bg-white/10"
-                                  }`}
-                                  title={isMarshal ? "Remove Marshal role" : "Promote to Ride Marshal (Direction Guide)"}
-                                >
-                                  {isMarshal ? "✓ Marshal" : "+ Marshal"}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextRole: ParticipantRole = isLead ? "rider" : "lead";
-                                    roleMutation.mutate({ participantId: p._id, role: nextRole });
-                                  }}
-                                  className="text-xs font-mono uppercase px-2 py-0.5 bg-amber-950/40 hover:bg-amber-900/40 text-amber-300 border border-amber-500/30 rounded transition"
-                                >
-                                  {isLead ? "Demote" : "Make Lead"}
-                                </button>
+                                {!isLead && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextRole: ParticipantRole = isMarshal ? "rider" : "marshal";
+                                      roleMutation.mutate({ participantId: p._id, role: nextRole });
+                                    }}
+                                    className={`text-xs font-mono uppercase px-2 py-0.5 rounded transition border cursor-pointer ${
+                                      isMarshal
+                                        ? "bg-cyan-950/50 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/50"
+                                        : "bg-white/5 text-muted-foreground border-border hover:bg-white/10"
+                                    }`}
+                                    title={isMarshal ? "Remove Marshal role" : "Promote to Ride Marshal (Direction Guide)"}
+                                  >
+                                    {isMarshal ? "✓ Marshal" : "+ Marshal"}
+                                  </button>
+                                )}
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => setEjectTarget({ id: p._id, name: p.riderName })}
-                                className="text-xs font-mono uppercase px-2 py-0.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/40 rounded transition flex items-center gap-1 cursor-pointer"
-                              >
-                                <UserMinus className="h-3 w-3" /> Eject
-                              </button>
+                              {!isLead && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEjectTarget({ id: p._id, name: p.riderName })}
+                                  className="text-xs font-mono uppercase px-2 py-0.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/40 rounded transition flex items-center gap-1 cursor-pointer"
+                                >
+                                  <UserMinus className="h-3 w-3" /> Eject
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <div className="mt-2 pt-1.5 border-t border-border flex items-center justify-between gap-2">
-                              <p className="text-xs font-mono text-red-400">
-                                {isEjected ? "Removed by admin" : "Rider exited session"}
+                              <p className="text-[11px] font-mono text-muted-foreground">
+                                {isEjected
+                                  ? "Removed by Admin · Rider can rejoin from their device if unlocked"
+                                  : "Rider exited session · Only rider can rejoin from their device"}
                               </p>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => activateParticipantMutation.mutate({ targetId: p._id })}
-                                  className="text-xs font-mono uppercase px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold transition cursor-pointer"
-                                >
-                                  ⚡ Activate Again
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditProfile(p)}
-                                  className="text-xs font-mono uppercase px-2 py-1 bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40 rounded transition cursor-pointer"
-                                >
-                                  ✏️ Profile
-                                </button>
-                              </div>
                             </div>
                           )}
                         </div>
