@@ -306,6 +306,75 @@ export default function RiderLiveRidePage() {
     onError: (err) => toast.error(apiErrorMessage(err))
   });
 
+  const displayPhoto = profileImagePreview || myProfileImageUrl;
+
+  // Assemble real-time squad participants from live tracking pings and initial ride data (memoized to prevent map canvas re-renders)
+  const squadParticipants: Participant[] = useMemo(() => {
+    const rawSquad = tracking.participants?.length
+      ? tracking.participants
+      : (ride?.participants || []);
+
+    const list: Participant[] = rawSquad.map((p) => {
+      if (p._id === participantId && tracking.latitude && tracking.longitude) {
+        return {
+          ...p,
+          latitude: tracking.latitude,
+          longitude: tracking.longitude,
+          speed: tracking.speed,
+          heading: tracking.heading,
+          accuracy: tracking.accuracy,
+          role: tracking.role || p.role,
+          lastPingAt: new Date().toISOString()
+        };
+      }
+      return p;
+    });
+
+    if (
+      participantId &&
+      tracking.latitude &&
+      tracking.longitude &&
+      !list.some((p) => p._id === participantId)
+    ) {
+      list.push({
+        _id: participantId,
+        riderName: riderName || "You",
+        phone: "",
+        bikeModel: bikeModel || "Motorcycle",
+        bikeNumber: bikeNumber || "",
+        latitude: tracking.latitude,
+        longitude: tracking.longitude,
+        speed: tracking.speed,
+        heading: tracking.heading,
+        accuracy: tracking.accuracy,
+        role: tracking.role || (isPillion ? "pillion" : "rider"),
+        isPillion,
+        pillionRiderName,
+        status: "active",
+        profileImage: displayPhoto,
+        lastPingAt: new Date().toISOString(),
+        joinedAt: new Date().toISOString()
+      });
+    }
+    return list;
+  }, [
+    tracking.participants,
+    tracking.latitude,
+    tracking.longitude,
+    tracking.speed,
+    tracking.heading,
+    tracking.accuracy,
+    tracking.role,
+    ride?.participants,
+    participantId,
+    riderName,
+    bikeModel,
+    bikeNumber,
+    isPillion,
+    pillionRiderName,
+    displayPhoto
+  ]);
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-[#070707] flex items-center justify-center p-4">
@@ -415,75 +484,6 @@ export default function RiderLiveRidePage() {
     const isMarshalOrLead = tracking.role === "marshal" || tracking.role === "lead";
     const squadCountVisible = isMarshalOrLead || tracking.showRiderCountToSquad || Boolean(ride.showRiderCountToSquad);
     const displayRiderCount = tracking.activeParticipantsCount ?? ride.activeParticipantsCount ?? null;
-
-    const displayPhoto = profileImagePreview || myProfileImageUrl;
-
-    // Assemble real-time squad participants from live tracking pings and initial ride data (memoized to prevent map canvas re-renders)
-    const squadParticipants: Participant[] = useMemo(() => {
-      const rawSquad = tracking.participants?.length
-        ? tracking.participants
-        : (ride.participants || []);
-
-      const list: Participant[] = rawSquad.map((p) => {
-        if (p._id === participantId && tracking.latitude && tracking.longitude) {
-          return {
-            ...p,
-            latitude: tracking.latitude,
-            longitude: tracking.longitude,
-            speed: tracking.speed,
-            heading: tracking.heading,
-            accuracy: tracking.accuracy,
-            role: tracking.role || p.role,
-            lastPingAt: new Date().toISOString()
-          };
-        }
-        return p;
-      });
-
-      if (
-        participantId &&
-        tracking.latitude &&
-        tracking.longitude &&
-        !list.some((p) => p._id === participantId)
-      ) {
-        list.push({
-          _id: participantId,
-          riderName: riderName || "You",
-          phone: "",
-          bikeModel: bikeModel || "Motorcycle",
-          bikeNumber: bikeNumber || "",
-          latitude: tracking.latitude,
-          longitude: tracking.longitude,
-          speed: tracking.speed,
-          heading: tracking.heading,
-          accuracy: tracking.accuracy,
-          role: tracking.role || (isPillion ? "pillion" : "rider"),
-          isPillion,
-          pillionRiderName,
-          status: "active",
-          profileImage: displayPhoto,
-          lastPingAt: new Date().toISOString(),
-          joinedAt: new Date().toISOString()
-        });
-      }
-      return list;
-    }, [
-      tracking.participants,
-      tracking.latitude,
-      tracking.longitude,
-      tracking.speed,
-      tracking.heading,
-      tracking.accuracy,
-      tracking.role,
-      ride.participants,
-      participantId,
-      riderName,
-      bikeModel,
-      bikeNumber,
-      isPillion,
-      pillionRiderName,
-      displayPhoto
-    ]);
 
     return (
       <main className="min-h-screen bg-[#070707] text-[#e5e2e1] px-3.5 py-4 sm:px-4 sm:py-6 flex flex-col justify-between max-w-lg mx-auto space-y-4">
