@@ -10,6 +10,9 @@ type TacticalMapProps = {
   onEjectParticipant?: (id: string, name: string) => void;
   onRoleChange?: (id: string, role: ParticipantRole) => void;
   onDirectMessage?: (id: string, name: string) => void;
+  onPickMyLocation?: (latitude: number, longitude: number) => void;
+  onRefreshExactGps?: () => void;
+  onActivateParticipant?: (id: string) => void;
   readOnly?: boolean;
   clockOffset?: number;
   myParticipantId?: string | null;
@@ -23,6 +26,9 @@ export function TacticalMap({
   onEjectParticipant,
   onRoleChange,
   onDirectMessage,
+  onPickMyLocation,
+  onRefreshExactGps,
+  onActivateParticipant,
   readOnly = false,
   clockOffset = 0,
   myParticipantId,
@@ -33,7 +39,18 @@ export function TacticalMap({
   const markersRef = useRef<Map<string, import("leaflet").Marker>>(new Map());
   const initialFittedRef = useRef(false);
   const prevSelectedIdRef = useRef<string | null>(null);
+  const pinModeRef = useRef(false);
+  const onPickMyLocationRef = useRef(onPickMyLocation);
   const [mapReady, setMapReady] = useState(false);
+  const [isPinMode, setIsPinMode] = useState(false);
+
+  useEffect(() => {
+    onPickMyLocationRef.current = onPickMyLocation;
+  }, [onPickMyLocation]);
+
+  useEffect(() => {
+    pinModeRef.current = isPinMode;
+  }, [isPinMode]);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -72,6 +89,17 @@ export function TacticalMap({
           opacity: 0.85
         }
       ).addTo(map);
+
+      map.on("click", (e: any) => {
+        if (pinModeRef.current && onPickMyLocationRef.current && e?.latlng) {
+          onPickMyLocationRef.current(
+            Number(e.latlng.lat.toFixed(6)),
+            Number(e.latlng.lng.toFixed(6))
+          );
+          setIsPinMode(false);
+          pinModeRef.current = false;
+        }
+      });
 
       mapInstanceRef.current = map;
       setMapReady(true);
@@ -155,14 +183,14 @@ export function TacticalMap({
         const isPillion = p.role === "pillion" || Boolean(p.isPillion);
         const isSelected = p._id === selectedParticipantId;
 
-        // Offline detection: no ping in the last 45 seconds (adjusted for server clock skew)
+        // Active riders stay LIVE on the radar even when their browser is backgrounded/closed; only left/ejected are offline
         const adjustedNow = Date.now() + (clockOffset || 0);
         const lastPingMs = p.lastPingAt ? new Date(p.lastPingAt).getTime() : 0;
         const diffMs = Math.max(0, adjustedNow - lastPingMs);
-        const isOffline = !lastPingMs || diffMs > 45000;
+        const isOffline = p.status !== "active";
 
         let timeAgoText = "just now";
-        if (isOffline && lastPingMs > 0) {
+        if (lastPingMs > 0 && diffMs > 15000) {
           const diffSec = Math.floor(diffMs / 1000);
           if (diffSec < 60) timeAgoText = `${diffSec}s ago`;
           else if (diffSec < 3600) timeAgoText = `${Math.floor(diffSec / 60)}m ago`;
@@ -377,6 +405,10 @@ export function TacticalMap({
                   <span>💬 Direct Message (Whisper)</span>
                 </button>
 
+                <button id="btn-activate-${p._id}" class="w-full text-center py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/50 rounded font-bold text-[10px] font-mono uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer">
+                  <span>⚡ Activate / Sync Live</span>
+                </button>
+
                 <!-- Role and Eject Actions Grid -->
                 <div class="grid grid-cols-2 gap-1.5">
                   <button id="btn-marshal-${p._id}" class="text-[10px] font-mono uppercase px-2 py-1.5 bg-[#16272e] hover:bg-[#1f3742] text-[#00f0ff] border border-[#00f0ff]/40 rounded transition cursor-pointer">
@@ -394,6 +426,11 @@ export function TacticalMap({
         if (!readOnly) {
           popupContent.querySelector(`#btn-direct-${p._id}`)?.addEventListener("click", () => {
             onDirectMessage?.(p._id, p.riderName);
+            marker?.closePopup();
+          });
+
+          popupContent.querySelector(`#btn-activate-${p._id}`)?.addEventListener("click", () => {
+            onActivateParticipant?.(p._id);
             marker?.closePopup();
           });
 
@@ -451,6 +488,7 @@ export function TacticalMap({
     onEjectParticipant,
     onRoleChange,
     onDirectMessage,
+    onActivateParticipant,
     readOnly,
     clockOffset,
     myParticipantId
@@ -493,17 +531,10 @@ export function TacticalMap({
     if (mapInstanceRef.current) mapInstanceRef.current.zoomOut();
   };
 
-  const adjustedNow = Date.now() + (clockOffset || 0);
-  const activeCount = participants.filter(
-    (p) => p.status === "active" && p.lastPingAt && Math.max(0, adjustedNow - new Date(p.lastPingAt).getTime()) <= 45000
-  ).length;
+  const activeCount = participants.filter((p) => p.status === "active").length;
 
   const activeWithSpeed = participants.filter(
-    (p) =>
-      p.status === "active" &&
-      (p.speed || 0) > 0 &&
-      p.lastPingAt &&
-      Math.max(0, adjustedNow - new Date(p.lastPingAt).getTime()) <= 45000
+    (p) => p.status === "active" && (p.speed || 0) > 0
   );
 
   const avgSpeed = activeWithSpeed.length
@@ -519,9 +550,25 @@ export function TacticalMap({
 
   return (
     <div
-      className={`relative isolate z-0 w-full h-full min-h-[360px] bg-[#080707] overflow-hidden rounded-2xl border border-[#3e2424] shadow-2xl ${className}`}
+      className={`relative isolate z-0 w-full h-full min-h-[360px] bg-[#080707] overflow-hidden rounded-2xl border border-[#3e2424] shadow-2xl ${
+        isPinMode ? "cursor-crosshair ring-2 ring-amber-400" : ""
+      } ${className}`}
     >
-      <div ref={mapContainerRef} className="w-full h-full" />
+      <div ref={mapContainerRef} className={`w-full h-full ${isPinMode ? "cursor-crosshair" : ""}`} />
+
+      {/* Interactive Pin Mode Instructions Banner */}
+      {isPinMode && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[1000] bg-amber-500 text-black font-mono text-xs font-bold px-3.5 py-1.5 rounded-full shadow-2xl flex items-center gap-2 animate-bounce">
+          <span>📌 Tap/Click your exact spot on the map</span>
+          <button
+            type="button"
+            onClick={() => setIsPinMode(false)}
+            className="bg-black/20 hover:bg-black/30 rounded-full px-1.5 py-0.5 text-[10px] uppercase cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {/* Top-Left: Minimal Telemetry Chip */}
       <div className="absolute top-2.5 left-2.5 z-[1000] bg-[#0c0909]/90 text-[#ffdad8] border border-[#3e2424] shadow-xl px-2.5 py-1 rounded-lg text-[11px] font-mono flex items-center gap-1.5 backdrop-blur-md select-none pointer-events-none">
@@ -532,7 +579,36 @@ export function TacticalMap({
       </div>
 
       {/* Top-Right: Clean Floating Tactical Control Bar */}
-      <div className="absolute top-2.5 right-2.5 z-[1000] flex items-center gap-1.5">
+      <div className="absolute top-2.5 right-2.5 z-[1000] flex items-center gap-1.5 flex-wrap justify-end">
+        {onRefreshExactGps && (
+          <button
+            type="button"
+            onClick={() => {
+              onRefreshExactGps();
+              setTimeout(handleCenterOnMe, 600);
+            }}
+            title="Acquire Fresh High-Accuracy Hardware GPS"
+            className="h-8 px-2.5 bg-[#0e0a0a]/90 hover:bg-[#1a1414] active:scale-95 text-cyan-300 border border-cyan-500/50 shadow-xl rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1 backdrop-blur-md transition-all cursor-pointer"
+          >
+            <span>🎯 Exact GPS</span>
+          </button>
+        )}
+
+        {onPickMyLocation && (
+          <button
+            type="button"
+            onClick={() => setIsPinMode((prev) => !prev)}
+            title="Click anywhere on map to set your exact street/building coordinates"
+            className={`h-8 px-2.5 shadow-xl rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1 backdrop-blur-md transition-all cursor-pointer border ${
+              isPinMode
+                ? "bg-amber-500 text-black border-amber-300 animate-pulse"
+                : "bg-[#0e0a0a]/90 hover:bg-[#1a1414] text-amber-300 border-amber-500/50"
+            }`}
+          >
+            <span>📌 {isPinMode ? "Click Map..." : "Pin My Spot"}</span>
+          </button>
+        )}
+
         {/* Re-center on user's bike (if coordinates available) */}
         {hasMyCoords && (
           <button

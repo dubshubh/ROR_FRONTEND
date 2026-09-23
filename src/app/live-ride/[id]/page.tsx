@@ -509,7 +509,7 @@ export default function RiderLiveRidePage() {
   }
 
   // ACTIVE TRANSMISSION COCKPIT HUD
-  if (participantId && tracking.isTracking) {
+  if (participantId) {
     const quickList = tracking.quickMessages?.length
       ? tracking.quickMessages
       : ride.quickMessages?.length
@@ -771,6 +771,14 @@ export default function RiderLiveRidePage() {
                   participants={squadParticipants}
                   selectedParticipantId={selectedRadarRiderId || participantId}
                   onSelectParticipant={(id) => setSelectedRadarRiderId(id)}
+                  onPickMyLocation={(lat, lng) => {
+                    tracking.setManualLocation(lat, lng);
+                    toast.success(`📌 Exact rider location pinned to ${lat}, ${lng}!`);
+                  }}
+                  onRefreshExactGps={() => {
+                    tracking.refreshExactGps();
+                    toast.info("🎯 Refreshing high-accuracy satellite GPS...");
+                  }}
                   readOnly={true}
                   clockOffset={tracking.clockOffset}
                   myParticipantId={participantId}

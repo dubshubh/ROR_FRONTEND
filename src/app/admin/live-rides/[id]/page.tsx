@@ -373,12 +373,37 @@ export default function AdminLiveRideDetailPage() {
     }
   }
 
+  const activateParticipantMutation = useMutation({
+    mutationFn: async ({ targetId, lat, lng }: { targetId: string; lat?: number; lng?: number }) => {
+      const formData = new FormData();
+      formData.append("status", "active");
+      if (typeof lat === "number" && typeof lng === "number") {
+        formData.append("latitude", String(lat));
+        formData.append("longitude", String(lng));
+      }
+      return updateAdminParticipantProfile(id, targetId, formData);
+    },
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-live-ride", id] });
+      if (ride && (!leadParticipant || res.participant._id === leadParticipant._id || res.participant.role === "lead")) {
+        void adminTracking.startTracking(ride.code, res.participant._id);
+        adminTracking.refreshExactGps();
+      }
+      toast.success(`${res.participant.riderName} is now ACTIVE & LIVE on radar!`);
+    },
+    onError: (err) => toast.error(apiErrorMessage(err))
+  });
+
+  function handlePickAdminLocation(lat: number, lng: number) {
+    adminTracking.setManualLocation(lat, lng);
+    const targetId = selectedRiderId || leadParticipant?._id || "lead";
+    activateParticipantMutation.mutate({ targetId, lat, lng });
+  }
+
   // Calculate live telemetry metrics
   const activeParticipants = useMemo(() => {
     if (!ride?.participants) return [];
-    return ride.participants.filter(
-      (p) => p.status === "active" && Date.now() - new Date(p.lastPingAt).getTime() < 120000
-    );
+    return ride.participants.filter((p) => p.status === "active");
   }, [ride?.participants]);
 
   const avgSpeed = useMemo(() => {
@@ -402,12 +427,13 @@ export default function AdminLiveRideDetailPage() {
       if (leadParticipant && p._id === leadParticipant._id && adminTracking.latitude && adminTracking.longitude) {
         return {
           ...p,
+          status: "active" as const,
           latitude: adminTracking.latitude,
           longitude: adminTracking.longitude,
           speed: adminTracking.speed || p.speed || 0,
           heading: adminTracking.heading || p.heading || 0,
           accuracy: adminTracking.accuracy || p.accuracy || 0,
-          lastPingAt: adminTracking.lastPingTime ? adminTracking.lastPingTime.toISOString() : p.lastPingAt
+          lastPingAt: adminTracking.lastPingTime ? adminTracking.lastPingTime.toISOString() : new Date().toISOString()
         };
       }
       return p;
@@ -439,9 +465,8 @@ export default function AdminLiveRideDetailPage() {
         }
       }
 
-      const lastPingMs = p.lastPingAt ? new Date(p.lastPingAt).getTime() : 0;
-      const isLive = p.status === "active" && lastPingMs > 0 && Date.now() - lastPingMs <= 45000;
-      const isOffline = p.status === "active" && (!lastPingMs || Date.now() - lastPingMs > 45000);
+      const isLive = p.status === "active";
+      const isOffline = p.status !== "active";
 
       if (rosterFilter === "live") return isLive;
       if (rosterFilter === "offline") return isOffline;
@@ -459,11 +484,8 @@ export default function AdminLiveRideDetailPage() {
     let marshal = 0;
 
     list.forEach((p) => {
-      const lastPingMs = p.lastPingAt ? new Date(p.lastPingAt).getTime() : 0;
-      const isLive = p.status === "active" && lastPingMs > 0 && Date.now() - lastPingMs <= 45000;
-      const isOffline = p.status === "active" && (!lastPingMs || Date.now() - lastPingMs > 45000);
-      if (isLive) live++;
-      if (isOffline) offline++;
+      if (p.status === "active") live++;
+      else offline++;
       if (p.role === "marshal" || p.role === "lead") marshal++;
     });
 
@@ -1163,6 +1185,9 @@ export default function AdminLiveRideDetailPage() {
               onEjectParticipant={(pId, name) => setEjectTarget({ id: pId, name })}
               onRoleChange={(pId, role) => roleMutation.mutate({ participantId: pId, role })}
               onDirectMessage={(pId, name) => setDirectMessageTarget({ id: pId, name })}
+              onPickMyLocation={handlePickAdminLocation}
+              onRefreshExactGps={() => adminTracking.refreshExactGps()}
+              onActivateParticipant={(pId) => activateParticipantMutation.mutate({ targetId: pId })}
               myParticipantId={leadParticipant?._id}
             />
 
@@ -1370,10 +1395,10 @@ export default function AdminLiveRideDetailPage() {
                       const isSelected = p._id === selectedRiderId;
 
                       const lastPingMs = p.lastPingAt ? new Date(p.lastPingAt).getTime() : 0;
-                      const isOffline = !lastPingMs || Date.now() - lastPingMs > 45000;
+                      const isOffline = p.status !== "active";
 
                       let timeAgoText = "just now";
-                      if (isOffline && lastPingMs > 0) {
+                      if (lastPingMs > 0 && Date.now() - lastPingMs > 15000) {
                         const diffSec = Math.floor((Date.now() - lastPingMs) / 1000);
                         if (diffSec < 60) timeAgoText = `${diffSec}s ago`;
                         else if (diffSec < 3600) timeAgoText = `${Math.floor(diffSec / 60)}m ago`;
@@ -1435,16 +1460,16 @@ export default function AdminLiveRideDetailPage() {
                                     </span>
                                   ) : null}
 
-                                  {isOffline && !isEjected && !isLeft ? (
+                                  {isOffline ? (
                                     <span className="text-xs font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                                      Offline ({timeAgoText})
+                                      {isEjected ? "Ejected" : "Left"}
                                     </span>
-                                  ) : !isEjected && !isLeft ? (
+                                  ) : (
                                     <span className="text-xs font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 font-bold">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                                       Live
                                     </span>
-                                  ) : null}
+                                  )}
                                 </div>
                                 <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">
                                   {p.bikeModel} {p.bikeNumber ? `(${p.bikeNumber})` : ""}
@@ -1459,7 +1484,7 @@ export default function AdminLiveRideDetailPage() {
                                 {isOffline ? `Last: ${p.speed}` : p.speed} <small className="text-xs text-muted-foreground font-normal">km/h</small>
                               </span>
                               <span className="block text-xs font-mono text-muted-foreground">
-                                {isEjected ? "Ejected" : isLeft ? "Left" : isOffline ? `Last ${timeAgoText}` : `±${p.accuracy}m GPS`}
+                                {isEjected ? "Ejected" : isLeft ? "Left" : `±${p.accuracy || 5}m GPS`}
                               </span>
                             </div>
                           </div>
@@ -1477,6 +1502,15 @@ export default function AdminLiveRideDetailPage() {
                                   className="text-xs font-mono uppercase px-2 py-0.5 bg-white/5 hover:bg-white/10 text-foreground border border-border rounded transition cursor-pointer"
                                 >
                                   Focus
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => activateParticipantMutation.mutate({ targetId: p._id })}
+                                  className="text-xs font-mono uppercase px-2 py-0.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded transition cursor-pointer"
+                                  title="Force sync / activate this participant as Live"
+                                >
+                                  ⚡ Sync Live
                                 </button>
 
                                 <button
@@ -1534,9 +1568,27 @@ export default function AdminLiveRideDetailPage() {
                               </button>
                             </div>
                           ) : (
-                            <p className="mt-1 text-xs font-mono text-red-400">
-                              {isEjected ? "Removed by admin (GPS off)" : "Rider exited session"}
-                            </p>
+                            <div className="mt-2 pt-1.5 border-t border-border flex items-center justify-between gap-2">
+                              <p className="text-xs font-mono text-red-400">
+                                {isEjected ? "Removed by admin" : "Rider exited session"}
+                              </p>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => activateParticipantMutation.mutate({ targetId: p._id })}
+                                  className="text-xs font-mono uppercase px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold transition cursor-pointer"
+                                >
+                                  ⚡ Activate Again
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditProfile(p)}
+                                  className="text-xs font-mono uppercase px-2 py-1 bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40 rounded transition cursor-pointer"
+                                >
+                                  ✏️ Profile
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </div>
                       );
