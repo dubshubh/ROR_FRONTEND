@@ -7,12 +7,14 @@ import {
   Bell,
   BellRing,
   Bike,
+  Camera,
   Check,
   ChevronDown,
   ChevronUp,
   Compass,
   Copy,
   Crown,
+  Edit3,
   ExternalLink,
   Eye,
   EyeOff,
@@ -29,6 +31,7 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Sparkles,
+  UserCircle,
   UserMinus,
   Users,
   Volume2,
@@ -61,10 +64,11 @@ import {
   ejectParticipant,
   getLiveRideAdmin,
   sendAdminBroadcastMessage,
+  updateAdminParticipantProfile,
   updateLiveRideStatus,
   updateParticipantRole
 } from "@/services/live-ride.service";
-import type { ParticipantRole } from "@/types/live-ride";
+import type { LiveRide, ParticipantRole } from "@/types/live-ride";
 
 // Dynamic import of Leaflet tactical map
 const TacticalMap = dynamic(
@@ -301,6 +305,74 @@ export default function AdminLiveRideDetailPage() {
     onError: (err) => toast.error(apiErrorMessage(err))
   });
 
+  // Profile Editor Modal State (Admin Leader & Any Participant)
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileBikeModel, setProfileBikeModel] = useState("");
+  const [profileBikeNumber, setProfileBikeNumber] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileRole, setProfileRole] = useState<ParticipantRole>("lead");
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string>("");
+  const autoStartedGpsRef = useRef(false);
+
+  const profileMutation = useMutation({
+    mutationFn: async (targetId: string) => {
+      const formData = new FormData();
+      formData.append("riderName", profileName.trim() || "Road Captain");
+      formData.append("bikeModel", profileBikeModel.trim() || "Lead Motorcycle");
+      formData.append("bikeNumber", profileBikeNumber.trim().toUpperCase());
+      formData.append("phone", profilePhone.trim());
+      formData.append("role", profileRole);
+      if (profilePhotoFile) {
+        formData.append("profileImage", profilePhotoFile);
+      }
+      return updateAdminParticipantProfile(id, targetId, formData);
+    },
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-live-ride", id] });
+      setEditingProfileId(null);
+      setProfilePhotoFile(null);
+      toast.success(`Profile saved for ${res.participant.riderName}!`);
+    },
+    onError: (err) => toast.error(apiErrorMessage(err))
+  });
+
+  const leadParticipant = useMemo(() => {
+    if (!ride?.participants) return undefined;
+    return (
+      ride.participants.find((p) => p.role === "lead" && p.status === "active") ||
+      ride.participants.find(
+        (p) =>
+          p.status === "active" &&
+          (p.bikeModel === "Lead Motorcycle" || p.riderName?.toLowerCase().includes("leader"))
+      )
+    );
+  }, [ride?.participants]);
+
+  function openEditProfile(target: LiveRide["participants"][0] | "lead") {
+    if (target === "lead") {
+      const lead = leadParticipant;
+      setEditingProfileId(lead ? lead._id : "lead");
+      setProfileName(lead?.riderName || "Road Captain");
+      setProfileBikeModel(lead?.bikeModel || "Royal Enfield");
+      setProfileBikeNumber(lead?.bikeNumber || "");
+      setProfilePhone(lead?.phone || "");
+      setProfileRole("lead");
+      setProfilePhotoFile(null);
+      setProfilePhotoPreview(lead?.profileImage || "");
+    } else {
+      setEditingProfileId(target._id);
+      setProfileName(target.riderName || "");
+      setProfileBikeModel(target.bikeModel || "");
+      setProfileBikeNumber(target.bikeNumber || "");
+      setProfilePhone(target.phone || "");
+      setProfileRole(target.role || "rider");
+      setProfilePhotoFile(null);
+      setProfilePhotoPreview(target.profileImage || "");
+    }
+  }
+
   // Calculate live telemetry metrics
   const activeParticipants = useMemo(() => {
     if (!ride?.participants) return [];
@@ -315,9 +387,41 @@ export default function AdminLiveRideDetailPage() {
     return Math.round(total / activeParticipants.length);
   }, [activeParticipants]);
 
-  const leadParticipant = useMemo(() => {
-    return ride?.participants?.find((p) => p.role === "lead" && p.status === "active");
-  }, [ride?.participants]);
+  // Automatically start Leader GPS broadcasting when Admin opens an active session
+  useEffect(() => {
+    if (ride && ride.status === "active" && leadParticipant && !autoStartedGpsRef.current && !adminTracking.isTracking) {
+      autoStartedGpsRef.current = true;
+      void adminTracking.startTracking(ride.code, leadParticipant._id);
+    }
+  }, [ride, leadParticipant, adminTracking]);
+
+  // Merge Admin's live device GPS coordinates into the participants list for instant map rendering
+  const mapParticipants = useMemo(() => {
+    if (!ride?.participants) return [];
+    return ride.participants.map((p) => {
+      if (leadParticipant && p._id === leadParticipant._id && adminTracking.latitude && adminTracking.longitude) {
+        return {
+          ...p,
+          latitude: adminTracking.latitude,
+          longitude: adminTracking.longitude,
+          speed: adminTracking.speed || p.speed || 0,
+          heading: adminTracking.heading || p.heading || 0,
+          accuracy: adminTracking.accuracy || p.accuracy || 0,
+          lastPingAt: adminTracking.lastPingTime ? adminTracking.lastPingTime.toISOString() : p.lastPingAt
+        };
+      }
+      return p;
+    });
+  }, [
+    ride?.participants,
+    leadParticipant,
+    adminTracking.latitude,
+    adminTracking.longitude,
+    adminTracking.speed,
+    adminTracking.heading,
+    adminTracking.accuracy,
+    adminTracking.lastPingTime
+  ]);
 
   // Filtered participants for Roster view
   const filteredParticipants = useMemo(() => {
@@ -826,12 +930,24 @@ export default function AdminLiveRideDetailPage() {
               </a>
             </Button>
 
+            {/* Leader Profile Setup / Edit Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openEditProfile("lead")}
+              className="h-8 px-2.5 text-xs font-mono border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 cursor-pointer inline-flex items-center gap-1.5"
+              title="Set or edit your Leader Profile (Name, Photo, Bike, Plate)"
+            >
+              <UserCircle className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Leader Profile</span>
+            </Button>
+
             {/* Leader GPS Toggle */}
             {leadParticipant && !isCompleted && (
               <Button
                 size="sm"
                 onClick={toggleLeaderGps}
-                className={`h-8 px-2.5 text-xs font-mono uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                className={`h-8 px-2.5 text-xs font-mono uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer ${
                   adminTracking.isTracking
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                     : "bg-white/5 hover:bg-white/10 text-amber-300 border border-amber-400/40"
@@ -1041,7 +1157,7 @@ export default function AdminLiveRideDetailPage() {
             )}
 
             <TacticalMap
-              participants={ride.participants}
+              participants={mapParticipants}
               selectedParticipantId={selectedRiderId}
               onSelectParticipant={(pId) => setSelectedRiderId(pId)}
               onEjectParticipant={(pId, name) => setEjectTarget({ id: pId, name })}
@@ -1361,6 +1477,15 @@ export default function AdminLiveRideDetailPage() {
                                   className="text-xs font-mono uppercase px-2 py-0.5 bg-white/5 hover:bg-white/10 text-foreground border border-border rounded transition cursor-pointer"
                                 >
                                   Focus
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => openEditProfile(p)}
+                                  className="text-xs font-mono uppercase px-2 py-0.5 bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40 rounded transition flex items-center gap-1 cursor-pointer"
+                                  title="Edit rider profile, bike details, and photo"
+                                >
+                                  <Edit3 className="h-3 w-3" /> Profile
                                 </button>
 
                                 <button
@@ -1846,6 +1971,159 @@ export default function AdminLiveRideDetailPage() {
             statusMutation.mutate("completed");
           }}
         />
+
+        {/* Admin Leader & Participant Profile Setup / Edit Modal */}
+        {editingProfileId && (
+          <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <Card className="w-full max-w-md bg-[#110c0c] border border-[#442828] p-5 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#2e1c1c] pb-3">
+                <div className="flex items-center gap-2">
+                  <UserCircle className="h-5 w-5 text-[#ffd700]" />
+                  <h3 className="font-display text-lg text-white">
+                    {editingProfileId === "lead" || profileRole === "lead"
+                      ? "Set Leader / Captain Profile"
+                      : "Edit Squad Rider Profile"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingProfileId(null)}
+                  className="text-muted-foreground hover:text-white p-1 rounded cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3.5">
+                {/* Profile Photo Upload */}
+                <div className="flex items-center gap-4">
+                  <div className="relative w-16 h-16 rounded-full border-2 border-[#ffd700] bg-[#1b1212] overflow-hidden flex items-center justify-center shrink-0">
+                    {profilePhotoPreview ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={profilePhotoPreview} alt="Avatar preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-display text-2xl text-[#ffd700]">
+                        {(profileName[0] || "L").toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-mono text-white cursor-pointer transition">
+                      <Camera className="h-3.5 w-3.5 text-[#ffd700]" />
+                      <span>Upload Profile Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setProfilePhotoFile(file);
+                            setProfilePhotoPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                    <p className="text-[11px] font-mono text-muted-foreground">
+                      Appears on live radar marker & squad roster.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Rider Name */}
+                <div className="space-y-1">
+                  <label className="text-xs font-mono uppercase text-muted-foreground">
+                    Rider / Captain Name *
+                  </label>
+                  <Input
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="e.g. Satyam Dubey"
+                    className="h-9 text-xs bg-background border-border"
+                  />
+                </div>
+
+                {/* Bike Model & Plate */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-mono uppercase text-muted-foreground">
+                      Motorcycle Model *
+                    </label>
+                    <Input
+                      value={profileBikeModel}
+                      onChange={(e) => setProfileBikeModel(e.target.value)}
+                      placeholder="e.g. Classic 350"
+                      className="h-9 text-xs bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-mono uppercase text-muted-foreground">
+                      Plate Number
+                    </label>
+                    <Input
+                      value={profileBikeNumber}
+                      onChange={(e) => setProfileBikeNumber(e.target.value.toUpperCase())}
+                      placeholder="e.g. UK 07 AB 1234"
+                      className="h-9 text-xs bg-background border-border uppercase"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone & Role */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-mono uppercase text-muted-foreground">
+                      Mobile Number
+                    </label>
+                    <Input
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(e.target.value)}
+                      placeholder="+91 9876543210"
+                      className="h-9 text-xs bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-mono uppercase text-muted-foreground">
+                      Squad Role
+                    </label>
+                    <select
+                      value={profileRole}
+                      onChange={(e) => setProfileRole(e.target.value as ParticipantRole)}
+                      className="w-full h-9 rounded-md bg-background border border-border px-2.5 text-xs font-mono text-white focus:outline-none focus:border-primary"
+                    >
+                      <option value="lead">★ Lead Captain</option>
+                      <option value="marshal">🧭 Direction Marshal</option>
+                      <option value="sweeper">🛡️ Tail Sweeper</option>
+                      <option value="rider">🏍️ Squad Rider</option>
+                      <option value="pillion">🎒 Pillion</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2e1c1c]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingProfileId(null)}
+                  className="font-mono text-xs border-border"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={profileMutation.isPending || !profileName.trim() || !profileBikeModel.trim()}
+                  onClick={() => profileMutation.mutate(editingProfileId)}
+                  className="bg-[#ff535b] hover:bg-[#ff3b44] text-white font-mono text-xs uppercase font-bold cursor-pointer"
+                >
+                  {profileMutation.isPending ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Working Live Formation QR Code Dialog & High-Res PNG Download */}
         <RideQrDialog

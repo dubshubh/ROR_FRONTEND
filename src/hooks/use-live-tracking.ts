@@ -302,9 +302,14 @@ export function useLiveTracking() {
       codeRef.current = code;
       participantIdRef.current = participantId;
 
-      if (!("geolocation" in navigator)) {
-        setState((prev) => ({ ...prev, error: "Geolocation is not supported by your browser" }));
-        return;
+      if (!latestCoordsRef.current) {
+        latestCoordsRef.current = {
+          latitude: 0,
+          longitude: 0,
+          speed: 0,
+          heading: 0,
+          accuracy: 0
+        };
       }
 
       startSilentAudio();
@@ -317,6 +322,35 @@ export function useLiveTracking() {
         completed: false,
         error: null
       }));
+
+      // Immediate keep-alive heartbeat so participant appears LIVE and fetches squad state right away
+      void sendTelemetry(
+        latestCoordsRef.current.latitude,
+        latestCoordsRef.current.longitude,
+        latestCoordsRef.current.speed,
+        latestCoordsRef.current.heading,
+        latestCoordsRef.current.accuracy
+      );
+
+      // Periodic 4-second stationary/keep-alive heartbeat ping (runs even if GPS is acquiring or blocked on PC)
+      if (heartbeatTimerRef.current !== null) {
+        clearInterval(heartbeatTimerRef.current);
+      }
+      heartbeatTimerRef.current = setInterval(() => {
+        const coords = latestCoordsRef.current || {
+          latitude: 0,
+          longitude: 0,
+          speed: 0,
+          heading: 0,
+          accuracy: 0
+        };
+        void sendTelemetry(coords.latitude, coords.longitude, coords.speed, coords.heading, coords.accuracy);
+      }, 4000);
+
+      if (!("geolocation" in navigator)) {
+        setState((prev) => ({ ...prev, error: "Geolocation is not supported by your browser" }));
+        return;
+      }
 
       const handlePosition = (position: GeolocationPosition) => {
         const { latitude, longitude, speed, heading, accuracy } = position.coords;
@@ -374,7 +408,8 @@ export function useLiveTracking() {
           longitude,
           speed: speedKmH,
           heading: compassHeading,
-          accuracy: roundedAccuracy
+          accuracy: roundedAccuracy,
+          error: null
         }));
 
         void sendTelemetry(latitude, longitude, speedKmH, compassHeading, roundedAccuracy);
@@ -408,17 +443,6 @@ export function useLiveTracking() {
         maximumAge: 2000
       });
       watchIdRef.current = watchId;
-
-      // Step 3: Periodic 4-second stationary heartbeat ping
-      if (heartbeatTimerRef.current !== null) {
-        clearInterval(heartbeatTimerRef.current);
-      }
-      heartbeatTimerRef.current = setInterval(() => {
-        if (latestCoordsRef.current) {
-          const { latitude, longitude, speed, heading, accuracy } = latestCoordsRef.current;
-          void sendTelemetry(latitude, longitude, speed, heading, accuracy);
-        }
-      }, 4000);
     },
     [acquireWakeLock, sendTelemetry, startSilentAudio]
   );

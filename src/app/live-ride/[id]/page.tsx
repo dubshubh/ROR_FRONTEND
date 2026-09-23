@@ -56,7 +56,8 @@ import {
   getPublicLiveRide,
   joinLiveRide,
   leaveLiveRide,
-  sendRiderBroadcastMessage
+  sendRiderBroadcastMessage,
+  updateRiderProfile
 } from "@/services/live-ride.service";
 import type { BroadcastMessagePriority, Participant } from "@/types/live-ride";
 
@@ -122,6 +123,7 @@ export default function RiderLiveRidePage() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermissionStatus>("default");
   const [showRiderQr, setShowRiderQr] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Broadcast messaging state
   const [customBroadcastText, setCustomBroadcastText] = useState("");
@@ -306,6 +308,53 @@ export default function RiderLiveRidePage() {
     onError: (err) => toast.error(apiErrorMessage(err))
   });
 
+  const profileUpdateMutation = useMutation({
+    mutationFn: async () => {
+      if (!participantId) throw new Error("Missing rider session");
+      const formData = new FormData();
+      formData.append("participantId", participantId);
+      formData.append("riderName", riderName.trim());
+      formData.append("bikeModel", bikeModel.trim());
+      formData.append("bikeNumber", bikeNumber.trim().toUpperCase());
+      formData.append("phone", phone.trim());
+      formData.append("isPillion", String(isPillion));
+      formData.append("pillionRiderName", pillionRiderName.trim());
+      if (profileImageFile) {
+        formData.append("profileImage", profileImageFile);
+      }
+      return updateRiderProfile(code, formData);
+    },
+    onSuccess: (res) => {
+      const updated = res.participant;
+      if (updated.riderName) setRiderName(updated.riderName);
+      if (updated.bikeModel) setBikeModel(updated.bikeModel);
+      if (updated.bikeNumber) setBikeNumber(updated.bikeNumber);
+      if (updated.phone) setPhone(updated.phone);
+      if (updated.profileImage) {
+        setMyProfileImageUrl(updated.profileImage);
+      }
+      setProfileImageFile(null);
+      setShowProfileModal(false);
+      try {
+        localStorage.setItem(
+          `ror_live_session_${code}`,
+          JSON.stringify({
+            participantId,
+            riderName: updated.riderName || riderName.trim(),
+            bikeModel: updated.bikeModel || bikeModel.trim(),
+            bikeNumber: updated.bikeNumber || bikeNumber.trim(),
+            phone: updated.phone || phone.trim(),
+            profileImage: updated.profileImage || myProfileImageUrl,
+            isPillion: Boolean(updated.isPillion),
+            pillionRiderName: updated.pillionRiderName || pillionRiderName.trim()
+          })
+        );
+      } catch {}
+      toast.success("Your rider profile has been updated!");
+    },
+    onError: (err) => toast.error(apiErrorMessage(err))
+  });
+
   const displayPhoto = profileImagePreview || myProfileImageUrl;
 
   // Assemble real-time squad participants from live tracking pings and initial ride data (memoized to prevent map canvas re-renders)
@@ -315,14 +364,18 @@ export default function RiderLiveRidePage() {
       : (ride?.participants || []);
 
     const list: Participant[] = rawSquad.map((p) => {
-      if (p._id === participantId && tracking.latitude && tracking.longitude) {
+      if (p._id === participantId) {
         return {
           ...p,
-          latitude: tracking.latitude,
-          longitude: tracking.longitude,
-          speed: tracking.speed,
-          heading: tracking.heading,
-          accuracy: tracking.accuracy,
+          riderName: riderName || p.riderName,
+          bikeModel: bikeModel || p.bikeModel,
+          bikeNumber: bikeNumber || p.bikeNumber,
+          profileImage: displayPhoto || p.profileImage,
+          latitude: tracking.latitude || p.latitude || 30.3165,
+          longitude: tracking.longitude || p.longitude || 78.0322,
+          speed: tracking.latitude ? tracking.speed : p.speed || 0,
+          heading: tracking.latitude ? tracking.heading : p.heading || 0,
+          accuracy: tracking.latitude ? tracking.accuracy : p.accuracy || 0,
           role: tracking.role || p.role,
           lastPingAt: new Date().toISOString()
         };
@@ -330,23 +383,18 @@ export default function RiderLiveRidePage() {
       return p;
     });
 
-    if (
-      participantId &&
-      tracking.latitude &&
-      tracking.longitude &&
-      !list.some((p) => p._id === participantId)
-    ) {
+    if (participantId && !list.some((p) => p._id === participantId)) {
       list.push({
         _id: participantId,
         riderName: riderName || "You",
-        phone: "",
+        phone: phone || "",
         bikeModel: bikeModel || "Motorcycle",
         bikeNumber: bikeNumber || "",
-        latitude: tracking.latitude,
-        longitude: tracking.longitude,
-        speed: tracking.speed,
-        heading: tracking.heading,
-        accuracy: tracking.accuracy,
+        latitude: tracking.latitude || 30.3165,
+        longitude: tracking.longitude || 78.0322,
+        speed: tracking.speed || 0,
+        heading: tracking.heading || 0,
+        accuracy: tracking.accuracy || 0,
         role: tracking.role || (isPillion ? "pillion" : "rider"),
         isPillion,
         pillionRiderName,
@@ -515,31 +563,46 @@ export default function RiderLiveRidePage() {
         {/* Compact Tactical HUD Header */}
         <header className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#2d1b1b]">
           <div className="flex items-center gap-2 min-w-0">
-            {displayPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={displayPhoto}
-                alt={riderName}
-                className="w-8 h-8 rounded-full object-cover border-2 shrink-0 shadow-md"
-                style={{ borderColor: roleColor }}
-              />
-            ) : (
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-black shrink-0 shadow-md"
-                style={{ backgroundColor: roleColor }}
-              >
-                {(riderName[0] || "R").toUpperCase()}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="relative group shrink-0 cursor-pointer"
+              title="Edit Rider Profile"
+            >
+              {displayPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={displayPhoto}
+                  alt={riderName}
+                  className="w-8 h-8 rounded-full object-cover border-2 shrink-0 shadow-md group-hover:opacity-85 transition"
+                  style={{ borderColor: roleColor }}
+                />
+              ) : (
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-black shrink-0 shadow-md group-hover:opacity-85 transition"
+                  style={{ backgroundColor: roleColor }}
+                >
+                  {(riderName[0] || "R").toUpperCase()}
+                </div>
+              )}
+            </button>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h2 className="font-bold text-sm text-white truncate max-w-[120px] sm:max-w-[170px]">{riderName}</h2>
+                <h2 className="font-bold text-sm text-white truncate max-w-[110px] sm:max-w-[160px]">{riderName}</h2>
                 <span
                   className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded border"
                   style={{ borderColor: `${roleColor}60`, color: roleColor, backgroundColor: `${roleColor}15` }}
                 >
                   {roleLabel}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(true)}
+                  className="text-[9px] font-mono uppercase px-1.5 py-0.5 bg-[#1b1111] hover:bg-[#2a1a1a] text-purple-300 border border-purple-500/40 rounded transition cursor-pointer"
+                  title="Update your name, photo, bike, or plate"
+                >
+                  ✏️ Profile
+                </button>
               </div>
               <p className="text-[10px] font-mono text-muted-foreground truncate">
                 {bikeModel} {bikeNumber ? `· ${bikeNumber}` : ""}
@@ -1033,6 +1096,130 @@ export default function RiderLiveRidePage() {
             leaveMutation.mutate();
           }}
         />
+
+        {/* Rider Profile Setup / Edit Modal */}
+        {showProfileModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+            <div className="bg-[#120c0c] border border-[#352323] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#251818] pb-3">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-[#ff535b] block">
+                    SQUAD IDENTITY
+                  </span>
+                  <h3 className="font-display text-2xl uppercase tracking-wide text-white">
+                    Edit Your Rider Profile
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  className="text-[#a3908a] hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Photo Upload & Preview */}
+              <div className="flex items-center gap-4 bg-[#1a1111] border border-[#2d1d1d] rounded-xl p-3">
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#ff535b] bg-[#2a1515] flex items-center justify-center shrink-0">
+                  {displayPhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={displayPhoto} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-display text-2xl text-white">
+                      {(riderName[0] || "R").toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <label className="text-xs font-bold text-white block">Profile Photo (Visible on Map)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      if (file) {
+                        setProfileImageFile(file);
+                        setProfileImagePreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="block w-full text-xs text-[#a3908a] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-mono file:uppercase file:bg-[#ff535b]/20 file:text-[#ff535b] hover:file:bg-[#ff535b]/30 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-mono uppercase tracking-wider text-[#a3908a] block mb-1">
+                    Rider Name *
+                  </label>
+                  <Input
+                    value={riderName}
+                    onChange={(e) => setRiderName(e.target.value)}
+                    placeholder="e.g. Aryan Verma"
+                    className="bg-[#1b1111] border-[#352323] text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-mono uppercase tracking-wider text-[#a3908a] block mb-1">
+                      Motorcycle Model *
+                    </label>
+                    <Input
+                      value={bikeModel}
+                      onChange={(e) => setBikeModel(e.target.value)}
+                      placeholder="e.g. RE Himalayan 450"
+                      className="bg-[#1b1111] border-[#352323] text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-mono uppercase tracking-wider text-[#a3908a] block mb-1">
+                      Plate Number
+                    </label>
+                    <Input
+                      value={bikeNumber}
+                      onChange={(e) => setBikeNumber(e.target.value.toUpperCase())}
+                      placeholder="e.g. UK07AB1234"
+                      className="bg-[#1b1111] border-[#352323] text-white uppercase font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-mono uppercase tracking-wider text-[#a3908a] block mb-1">
+                    Phone Number
+                  </label>
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 9876543210"
+                    className="bg-[#1b1111] border-[#352323] text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#251818]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowProfileModal(false)}
+                  className="text-xs font-mono uppercase cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={profileUpdateMutation.isPending || !riderName.trim() || !bikeModel.trim()}
+                  onClick={() => profileUpdateMutation.mutate()}
+                  className="bg-[#ff535b] hover:bg-[#ff535b]/90 text-white font-mono text-xs uppercase tracking-wider cursor-pointer"
+                >
+                  {profileUpdateMutation.isPending ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Ride QR Code Share Modal */}
         <RideQrDialog

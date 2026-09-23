@@ -16,7 +16,7 @@ import type {
 // Admin Operations
 // ----------------------------------------------------
 
-export async function createLiveRide(data: CreateLiveRideInput) {
+export async function createLiveRide(data: CreateLiveRideInput | FormData) {
   const response = await api.post("/admin/live-rides", data);
   return response.data.data as LiveRide;
 }
@@ -47,6 +47,24 @@ export async function ejectParticipant(id: string, participantId: string) {
 export async function updateParticipantRole(id: string, participantId: string, role: ParticipantRole) {
   const response = await api.patch(`/admin/live-rides/${id}/participants/${participantId}/role`, { role });
   return response.data.data as { participantId: string; role: ParticipantRole };
+}
+
+export async function updateAdminParticipantProfile(
+  id: string,
+  participantId: string,
+  payload: FormData | {
+    riderName?: string;
+    bikeModel?: string;
+    bikeNumber?: string;
+    phone?: string;
+    role?: ParticipantRole;
+    isPillion?: boolean;
+    pillionRiderName?: string;
+    profileImage?: string;
+  }
+) {
+  const response = await api.patch(`/admin/live-rides/${id}/participants/${participantId}/profile`, payload);
+  return response.data.data as { participant: LiveRide["participants"][0] };
 }
 
 export async function sendAdminBroadcastMessage(
@@ -93,6 +111,23 @@ export async function joinLiveRide(code: string, input: JoinLiveRideInput | Form
   };
 }
 
+export async function updateRiderProfile(
+  code: string,
+  payload: FormData | {
+    participantId: string;
+    riderName?: string;
+    bikeModel?: string;
+    bikeNumber?: string;
+    phone?: string;
+    isPillion?: boolean;
+    pillionRiderName?: string;
+    profileImage?: string;
+  }
+) {
+  const response = await api.patch(`/live-rides/${code}/profile`, payload);
+  return response.data.data as { participant: LiveRide["participants"][0] };
+}
+
 export async function pingLocation(code: string, input: PingLocationInput): Promise<PingResponse> {
   const response = await api.post(`/live-rides/${code}/ping`, input);
   return response.data as PingResponse;
@@ -106,3 +141,4 @@ export async function sendRiderBroadcastMessage(code: string, input: SendBroadca
 export async function leaveLiveRide(code: string, participantId: string) {
   await api.post(`/live-rides/${code}/leave`, { participantId });
 }
+

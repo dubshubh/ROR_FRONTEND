@@ -122,9 +122,9 @@ export function TacticalMap({
 
       const activeValidCoords: [number, number][] = [];
 
-      participants.forEach((p) => {
-        // Skip if coordinates are unset or participant is ejected/left
-        if (!p.latitude || !p.longitude || p.status === "ejected" || p.status === "left") {
+      participants.forEach((p, idx) => {
+        // Skip only if participant is ejected or left
+        if (p.status === "ejected" || p.status === "left") {
           if (markersRef.current.has(p._id)) {
             markersRef.current.get(p._id)!.remove();
             markersRef.current.delete(p._id);
@@ -132,7 +132,20 @@ export function TacticalMap({
           return;
         }
 
-        const latLng: [number, number] = [p.latitude, p.longitude];
+        const hasLiveGps = Boolean(
+          typeof p.latitude === "number" &&
+            typeof p.longitude === "number" &&
+            (p.latitude !== 0 || p.longitude !== 0)
+        );
+        const angle = (idx * 137.5 * Math.PI) / 180;
+        const resolvedLat = hasLiveGps
+          ? p.latitude!
+          : Number((30.3165 + Math.cos(angle) * 0.0008).toFixed(6));
+        const resolvedLng = hasLiveGps
+          ? p.longitude!
+          : Number((78.0322 + Math.sin(angle) * 0.0008).toFixed(6));
+
+        const latLng: [number, number] = [resolvedLat, resolvedLng];
         activeValidCoords.push(latLng);
 
         const isMe = p._id === myParticipantId;
@@ -398,7 +411,10 @@ export function TacticalMap({
 
         marker.bindPopup(popupContent, {
           className: "rebel-map-popup",
-          closeButton: false
+          closeButton: false,
+          autoPan: true,
+          autoPanPaddingTopLeft: [24, 72],
+          autoPanPaddingBottomRight: [24, 36]
         });
       });
 
@@ -408,14 +424,16 @@ export function TacticalMap({
           prevSelectedIdRef.current = selectedParticipantId;
           const targetMarker = markersRef.current.get(selectedParticipantId);
           if (targetMarker) {
-            map.panTo(targetMarker.getLatLng(), { animate: true });
+            map.setView(targetMarker.getLatLng(), 15, { animate: true });
             targetMarker.openPopup();
           }
         }
       } else if (!selectedParticipantId) {
         prevSelectedIdRef.current = null;
-      } else if (activeValidCoords.length > 0 && !initialFittedRef.current) {
-        // Automatically frame all riders on initial coordinate load
+      }
+
+      // Automatically frame all riders on initial coordinate load
+      if (activeValidCoords.length > 0 && !initialFittedRef.current) {
         if (activeValidCoords.length === 1) {
           map.setView(activeValidCoords[0], 15, { animate: true });
         } else {
@@ -441,9 +459,10 @@ export function TacticalMap({
   // Center on current rider
   const handleCenterOnMe = () => {
     if (!mapInstanceRef.current || !myParticipantId) return;
-    const myP = participants.find((p) => p._id === myParticipantId);
-    if (myP?.latitude && myP?.longitude) {
-      mapInstanceRef.current.setView([myP.latitude, myP.longitude], 16, { animate: true });
+    const targetMarker = markersRef.current.get(myParticipantId);
+    if (targetMarker) {
+      mapInstanceRef.current.setView(targetMarker.getLatLng(), 16, { animate: true });
+      targetMarker.openPopup();
     }
   };
 
@@ -451,16 +470,18 @@ export function TacticalMap({
   const handleRecenter = async () => {
     if (!mapInstanceRef.current) return;
     const L = await import("leaflet");
-    const activeValidCoords: [number, number][] = participants
-      .filter((p) => p.latitude && p.longitude && p.status !== "ejected" && p.status !== "left")
-      .map((p) => [p.latitude!, p.longitude!] as [number, number]);
+    const activeValidCoords: [number, number][] = [];
+    for (const marker of markersRef.current.values()) {
+      const ll = marker.getLatLng();
+      activeValidCoords.push([ll.lat, ll.lng]);
+    }
 
     if (activeValidCoords.length === 1) {
       mapInstanceRef.current.setView(activeValidCoords[0], 15, { animate: true });
     } else if (activeValidCoords.length > 1) {
-      mapInstanceRef.current.fitBounds(L.latLngBounds(activeValidCoords), { padding: [40, 40], animate: true });
+      mapInstanceRef.current.fitBounds(L.latLngBounds(activeValidCoords), { padding: [40, 40], maxZoom: 16, animate: true });
     } else {
-      mapInstanceRef.current.setView([30.3165, 78.0322], 13, { animate: true });
+      mapInstanceRef.current.setView([30.3165, 78.0322], 14, { animate: true });
     }
   };
 
@@ -492,7 +513,7 @@ export function TacticalMap({
   const hasMyCoords = Boolean(
     myParticipantId &&
       participants.some(
-        (p) => p._id === myParticipantId && p.latitude && p.longitude && p.status !== "ejected" && p.status !== "left"
+        (p) => p._id === myParticipantId && p.status !== "ejected" && p.status !== "left"
       )
   );
 
