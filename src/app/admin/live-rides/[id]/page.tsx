@@ -1400,16 +1400,8 @@ export default function AdminLiveRideDetailPage() {
                       const isLeft = p.status === "left";
                       const isSelected = p._id === selectedRiderId;
 
-                      const lastPingMs = p.lastPingAt ? new Date(p.lastPingAt).getTime() : 0;
                       const isOffline = p.status !== "active";
 
-                      let timeAgoText = "just now";
-                      if (lastPingMs > 0 && Date.now() - lastPingMs > 15000) {
-                        const diffSec = Math.floor((Date.now() - lastPingMs) / 1000);
-                        if (diffSec < 60) timeAgoText = `${diffSec}s ago`;
-                        else if (diffSec < 3600) timeAgoText = `${Math.floor(diffSec / 60)}m ago`;
-                        else timeAgoText = `${Math.floor(diffSec / 3600)}h ago`;
-                      }
 
                       const roleColor = isLead ? "#ffd700" : isMarshal ? "#00f0ff" : isSweeper ? "#a855f7" : isPillion ? "#f97316" : "#ff535b";
                       const avatarBorderColor = isOffline ? "#f59e0b" : roleColor;

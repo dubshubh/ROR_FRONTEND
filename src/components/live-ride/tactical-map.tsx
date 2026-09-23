@@ -90,7 +90,7 @@ export function TacticalMap({
         }
       ).addTo(map);
 
-      map.on("click", (e: any) => {
+      map.on("click", (e: { latlng?: { lat: number; lng: number } }) => {
         if (pinModeRef.current && onPickMyLocationRef.current && e?.latlng) {
           onPickMyLocationRef.current(
             Number(e.latlng.lat.toFixed(6)),

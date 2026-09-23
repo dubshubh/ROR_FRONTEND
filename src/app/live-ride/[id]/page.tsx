@@ -445,6 +445,7 @@ export default function RiderLiveRidePage() {
     ride?.participants,
     participantId,
     riderName,
+    phone,
     bikeModel,
     bikeNumber,
     isPillion,
