@@ -10,6 +10,7 @@ type TacticalMapProps = {
   onEjectParticipant?: (id: string, name: string) => void;
   onRoleChange?: (id: string, role: ParticipantRole) => void;
   onDirectMessage?: (id: string, name: string) => void;
+  readOnly?: boolean;
 };
 
 export function TacticalMap({
@@ -19,6 +20,8 @@ export function TacticalMap({
   onEjectParticipant,
   onRoleChange,
   onDirectMessage
+  onDirectMessage,
+  readOnly = false
 }: TacticalMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<import("leaflet").Map | null>(null);
@@ -241,6 +244,7 @@ export function TacticalMap({
             </div>
             ${
               p.phone
+              !readOnly && p.phone
                 ? `
                 <div class="flex items-center justify-between pt-1 border-t border-[#2d1a1a]">
                   <span class="text-muted-foreground">Contact:</span>
@@ -256,6 +260,22 @@ export function TacticalMap({
             <button id="btn-direct-${p._id}" class="w-full text-center py-1.5 px-2 bg-[#1b2b25] hover:bg-[#233b31] active:scale-[0.98] text-emerald-300 border border-emerald-500/50 rounded font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
               <span>💬 Direct Message (Whisper)</span>
             </button>
+          ${
+            readOnly
+              ? `
+              <div class="mt-2.5 pt-2 border-t border-[#352323] text-center">
+                <span class="text-[10px] font-mono text-[#a3908a] uppercase tracking-wider flex items-center justify-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full ${isOffline ? "bg-amber-400" : "bg-emerald-400"}"></span>
+                  Rebels Squad Radar
+                </span>
+              </div>
+            `
+              : `
+              <div class="mt-2.5 pt-2 border-t border-[#352323] flex flex-col gap-1.5">
+                <!-- 1-to-1 Whisper Direct Message Button -->
+                <button id="btn-direct-${p._id}" class="w-full text-center py-1.5 px-2 bg-[#1b2b25] hover:bg-[#233b31] active:scale-[0.98] text-emerald-300 border border-emerald-500/50 rounded font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
+                  <span>💬 Direct Message (Whisper)</span>
+                </button>
 
             <!-- Role and Eject Actions Grid -->
             <div class="grid grid-cols-2 gap-1.5">
@@ -267,6 +287,18 @@ export function TacticalMap({
               </button>
             </div>
           </div>
+                <!-- Role and Eject Actions Grid -->
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button id="btn-marshal-${p._id}" class="text-[10px] font-mono uppercase px-2 py-1 bg-[#16272e] hover:bg-[#1f3742] text-[#00f0ff] border border-[#00f0ff]/40 rounded transition cursor-pointer">
+                    ${isMarshal ? "Demote" : "Make Marshal"}
+                  </button>
+                  <button id="btn-eject-${p._id}" class="text-[10px] font-mono uppercase px-2 py-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/50 rounded transition cursor-pointer">
+                    Eject
+                  </button>
+                </div>
+              </div>
+            `
+          }
         `;
 
         // Wire popup button actions
@@ -274,17 +306,32 @@ export function TacticalMap({
           onDirectMessage?.(p._id, p.riderName);
           marker?.closePopup();
         });
+        if (!readOnly) {
+          popupContent.querySelector(`#btn-direct-${p._id}`)?.addEventListener("click", () => {
+            onDirectMessage?.(p._id, p.riderName);
+            marker?.closePopup();
+          });
 
         popupContent.querySelector(`#btn-eject-${p._id}`)?.addEventListener("click", () => {
           onEjectParticipant?.(p._id, p.riderName);
           marker?.closePopup();
         });
+          popupContent.querySelector(`#btn-eject-${p._id}`)?.addEventListener("click", () => {
+            onEjectParticipant?.(p._id, p.riderName);
+            marker?.closePopup();
+          });
 
         popupContent.querySelector(`#btn-marshal-${p._id}`)?.addEventListener("click", () => {
           const nextRole: ParticipantRole = isMarshal ? "rider" : "marshal";
           onRoleChange?.(p._id, nextRole);
           marker?.closePopup();
         });
+          popupContent.querySelector(`#btn-marshal-${p._id}`)?.addEventListener("click", () => {
+            const nextRole: ParticipantRole = isMarshal ? "rider" : "marshal";
+            onRoleChange?.(p._id, nextRole);
+            marker?.closePopup();
+          });
+        }
 
         marker.bindPopup(popupContent, {
           className: "rebel-map-popup",
@@ -312,6 +359,7 @@ export function TacticalMap({
 
     void updateMarkers();
   }, [participants, selectedParticipantId, onSelectParticipant, onEjectParticipant, onRoleChange, onDirectMessage]);
+  }, [participants, selectedParticipantId, onSelectParticipant, onEjectParticipant, onRoleChange, onDirectMessage, readOnly]);
 
   const handleRecenter = async () => {
     if (!mapInstanceRef.current) return;

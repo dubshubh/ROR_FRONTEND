@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { dispatchBrowserNotification, playTacticalAlertChime } from "@/lib/notifications";
 import { pingLocation } from "@/services/live-ride.service";
 import type { BroadcastMessage, ParticipantRole } from "@/types/live-ride";
+import type { BroadcastMessage, Participant, ParticipantRole } from "@/types/live-ride";
 
 type TrackingState = {
   isTracking: boolean;
@@ -19,6 +20,7 @@ type TrackingState = {
   role: ParticipantRole;
   activeParticipantsCount: number | null;
   showRiderCountToSquad: boolean;
+  participants: Participant[];
   messages: BroadcastMessage[];
   quickMessages: string[];
   latestBroadcast: BroadcastMessage | null;
@@ -69,6 +71,7 @@ export function useLiveTracking() {
     role: "rider",
     activeParticipantsCount: null,
     showRiderCountToSquad: false,
+    participants: [],
     messages: [],
     quickMessages: [],
     latestBroadcast: null,
@@ -247,6 +250,7 @@ export function useLiveTracking() {
             typeof res.showRiderCountToSquad === "boolean"
               ? res.showRiderCountToSquad
               : prev.showRiderCountToSquad,
+          participants: res.participants && res.participants.length > 0 ? res.participants : prev.participants,
           messages: msgs.length ? msgs : prev.messages,
           quickMessages: res.quickMessages?.length ? res.quickMessages : prev.quickMessages,
           latestBroadcast: latest || prev.latestBroadcast

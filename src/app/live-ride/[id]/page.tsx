@@ -15,6 +15,7 @@ import {
   Gauge,
   Hash,
   LogOut,
+  Map as MapIcon,
   MapPin,
   Navigation,
   Phone,
@@ -30,6 +31,7 @@ import {
   Volume2,
   X
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -57,6 +59,25 @@ import {
   sendRiderBroadcastMessage
 } from "@/services/live-ride.service";
 import type { BroadcastMessagePriority } from "@/types/live-ride";
+import type { BroadcastMessagePriority, Participant } from "@/types/live-ride";
+
+// Dynamic import of Leaflet tactical map (read-only for squad riders)
+const TacticalMap = dynamic(
+  () => import("@/components/live-ride/tactical-map").then((mod) => mod.TacticalMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[380px] bg-[#0c0c0c] flex items-center justify-center border border-[#442b2a] rounded-xl">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-3 border-[#ff535b] border-t-transparent rounded-full animate-spin" />
+          <span className="font-mono text-xs text-[#a3908a] uppercase tracking-wider">
+            Acquiring Squad Radar Grid...
+          </span>
+        </div>
+      </div>
+    )
+  }
+);
 
 const DEFAULT_QUICK_MESSAGES = [
   "🛑 Regroup at fuel station",
@@ -109,6 +130,8 @@ export default function RiderLiveRidePage() {
   const [dismissedBroadcastId, setDismissedBroadcastId] = useState<string | null>(null);
   const [showCommsLog, setShowCommsLog] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
+  const [cockpitView, setCockpitView] = useState<"map" | "gauge">("map");
+  const [selectedRadarRiderId, setSelectedRadarRiderId] = useState<string | null>(null);
 
   const tracking = useLiveTracking();
 
@@ -379,6 +402,54 @@ export default function RiderLiveRidePage() {
 
     const displayPhoto = profileImagePreview || myProfileImageUrl;
 
+    // Assemble real-time squad participants from live tracking pings and initial ride data
+    const rawSquad = tracking.participants?.length
+      ? tracking.participants
+      : (ride.participants || []);
+
+    const squadParticipants: Participant[] = rawSquad.map((p) => {
+      if (p._id === participantId && tracking.latitude && tracking.longitude) {
+        return {
+          ...p,
+          latitude: tracking.latitude,
+          longitude: tracking.longitude,
+          speed: tracking.speed,
+          heading: tracking.heading,
+          accuracy: tracking.accuracy,
+          role: tracking.role || p.role,
+          lastPingAt: new Date().toISOString()
+        };
+      }
+      return p;
+    });
+
+    if (
+      participantId &&
+      tracking.latitude &&
+      tracking.longitude &&
+      !squadParticipants.some((p) => p._id === participantId)
+    ) {
+      squadParticipants.push({
+        _id: participantId,
+        riderName: riderName || "You",
+        phone: "",
+        bikeModel: bikeModel || "Motorcycle",
+        bikeNumber: bikeNumber || "",
+        latitude: tracking.latitude,
+        longitude: tracking.longitude,
+        speed: tracking.speed,
+        heading: tracking.heading,
+        accuracy: tracking.accuracy,
+        role: tracking.role || (isPillion ? "pillion" : "rider"),
+        isPillion,
+        pillionRiderName,
+        status: "active",
+        profileImage: displayPhoto,
+        lastPingAt: new Date().toISOString(),
+        joinedAt: new Date().toISOString()
+      });
+    }
+
     return (
       <main className="min-h-screen bg-[#070707] text-[#e5e2e1] px-3.5 py-4 sm:px-4 sm:py-6 flex flex-col justify-between max-w-lg mx-auto space-y-4">
         {/* Top Header */}
@@ -593,6 +664,32 @@ export default function RiderLiveRidePage() {
             <Gauge className="h-5 w-5 text-[#ff535b] absolute top-4 sm:top-5" />
             <span className="font-display text-5xl sm:text-7xl text-white tracking-tight">{tracking.speed}</span>
             <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#ffb3b1]">KM / H</span>
+          {/* Segmented View Mode Switcher: Live Squad Radar vs Speedometer HUD */}
+          <div className="flex items-center justify-center p-1 rounded-xl bg-[#140e0e] border border-[#3e2424] max-w-xs mx-auto shadow-inner">
+            <button
+              type="button"
+              onClick={() => setCockpitView("map")}
+              className={`flex-1 py-1.5 px-3 rounded-lg font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                cockpitView === "map"
+                  ? "bg-[#ff535b] text-white font-bold shadow-[0_0_15px_rgba(255,83,91,0.4)]"
+                  : "text-[#a3908a] hover:text-white"
+              }`}
+            >
+              <MapIcon className="h-3.5 w-3.5" />
+              <span>Squad Radar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCockpitView("gauge")}
+              className={`flex-1 py-1.5 px-3 rounded-lg font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                cockpitView === "gauge"
+                  ? "bg-[#ff535b] text-white font-bold shadow-[0_0_15px_rgba(255,83,91,0.4)]"
+                  : "text-[#a3908a] hover:text-white"
+              }`}
+            >
+              <Gauge className="h-3.5 w-3.5" />
+              <span>Speed HUD</span>
+            </button>
           </div>
 
           {/* Telemetry Metrics */}
@@ -602,17 +699,69 @@ export default function RiderLiveRidePage() {
               <div className="truncate">
                 <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">HEADING</span>
                 <strong className="text-sm text-white">{tracking.heading}°</strong>
+          {cockpitView === "map" ? (
+            <div className="space-y-2.5">
+              {/* Tactical Radar Map (Read-Only Convoy View) */}
+              <div className="h-[380px] sm:h-[420px] w-full rounded-xl overflow-hidden border border-[#442b2a] shadow-2xl relative">
+                <TacticalMap
+                  participants={squadParticipants}
+                  selectedParticipantId={selectedRadarRiderId || participantId}
+                  onSelectParticipant={(id) => setSelectedRadarRiderId(id)}
+                  readOnly={true}
+                />
+              </div>
+
+              {/* Compact Floating Telemetry Strip Under Radar Map */}
+              <div className="grid grid-cols-3 gap-2 font-mono text-center">
+                <div className="bg-[#121010] border border-[#3e2424] py-2 px-1 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">YOUR SPEED</span>
+                  <strong className="text-base text-[#ff535b] font-bold">{tracking.speed} km/h</strong>
+                </div>
+                <div className="bg-[#121010] border border-[#3e2424] py-2 px-1 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">HEADING</span>
+                  <strong className="text-base text-white font-bold">{tracking.heading}°</strong>
+                </div>
+                <div className="bg-[#121010] border border-[#3e2424] py-2 px-1 rounded-lg">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">ACCURACY</span>
+                  <strong className="text-base text-emerald-400 font-bold">±{tracking.accuracy}m</strong>
+                </div>
               </div>
             </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Speedometer Circle */}
+              <div className="relative mx-auto w-44 h-44 sm:w-52 sm:h-52 rounded-full border-4 border-[#331c1c] flex flex-col items-center justify-center bg-[#110d0d] shadow-[0_0_40px_rgba(255,83,91,0.15)] rebel-scan">
+                <Gauge className="h-5 w-5 text-[#ff535b] absolute top-4 sm:top-5" />
+                <span className="font-display text-5xl sm:text-7xl text-white tracking-tight">{tracking.speed}</span>
+                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#ffb3b1]">KM / H</span>
+              </div>
 
             <div className="bg-[#121010] border border-[#3e2424] p-3 rounded-lg flex items-center gap-3">
               <Navigation className="h-5 w-5 text-[#ff535b] shrink-0" />
               <div className="truncate">
                 <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">GPS ACCURACY</span>
                 <strong className="text-sm text-white">±{tracking.accuracy}m</strong>
+              {/* Telemetry Metrics */}
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 font-mono">
+                <div className="bg-[#121010] border border-[#3e2424] p-3 rounded-lg flex items-center gap-3">
+                  <Compass className="h-5 w-5 text-[#ff535b] shrink-0" />
+                  <div className="truncate">
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">HEADING</span>
+                    <strong className="text-sm text-white">{tracking.heading}°</strong>
+                  </div>
+                </div>
+
+                <div className="bg-[#121010] border border-[#3e2424] p-3 rounded-lg flex items-center gap-3">
+                  <Navigation className="h-5 w-5 text-[#ff535b] shrink-0" />
+                  <div className="truncate">
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">GPS ACCURACY</span>
+                    <strong className="text-sm text-white">±{tracking.accuracy}m</strong>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          )}
 
           {/* MARSHAL / LEAD DIRECTION BROADCAST DESK (Tactical 1-Tap Broadcaster) */}
           {isMarshalOrLead && (
