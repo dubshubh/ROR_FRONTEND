@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dispatchBrowserNotification, playTacticalAlertChime } from "@/lib/notifications";
 import { pingLocation } from "@/services/live-ride.service";
-import type { BroadcastMessage, ParticipantRole } from "@/types/live-ride";
 import type { BroadcastMessage, Participant, ParticipantRole } from "@/types/live-ride";
 
 type TrackingState = {
@@ -14,6 +13,7 @@ type TrackingState = {
   heading: number; // degrees
   accuracy: number; // meters
   lastPingTime: Date | null;
+  clockOffset: number; // serverTime - Date.now()
   wakeLockActive: boolean;
   ejected: boolean;
   completed: boolean;
@@ -26,6 +26,26 @@ type TrackingState = {
   latestBroadcast: BroadcastMessage | null;
   error: string | null;
 };
+
+function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function calculateBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const y = Math.sin(((lon2 - lon1) * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180);
+  const x =
+    Math.cos((lat1 * Math.PI) / 180) * Math.sin((lat2 * Math.PI) / 180) -
+    Math.sin((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.cos(((lon2 - lon1) * Math.PI) / 180);
+  const brng = (Math.atan2(y, x) * 180) / Math.PI;
+  return (brng + 360) % 360;
+}
 
 function playTacticalChime() {
   try {
@@ -72,6 +92,7 @@ export function useLiveTracking() {
     activeParticipantsCount: null,
     showRiderCountToSquad: false,
     participants: [],
+    clockOffset: 0,
     messages: [],
     quickMessages: [],
     latestBroadcast: null,
@@ -87,6 +108,8 @@ export function useLiveTracking() {
   const codeRef = useRef<string>("");
   const participantIdRef = useRef<string>("");
   const lastNotifiedMsgIdRef = useRef<string>("");
+  const lastKnownHeadingRef = useRef<number>(0);
+  const prevPositionRef = useRef<{ latitude: number; longitude: number; timestamp: number } | null>(null);
   const latestCoordsRef = useRef<{
     latitude: number;
     longitude: number;
@@ -204,6 +227,11 @@ export function useLiveTracking() {
           return;
         } else if (res.participantStatus === "ejected") {
           stopTracking();
+          try {
+            if (codeRef.current) {
+              localStorage.removeItem(`ror_live_session_${codeRef.current}`);
+            }
+          } catch {}
           setState((prev) => ({ ...prev, ejected: true }));
           return;
         }
@@ -236,9 +264,12 @@ export function useLiveTracking() {
           });
         }
 
+        const serverOffset = res.serverTime ? Date.parse(res.serverTime) - Date.now() : 0;
+
         setState((prev) => ({
           ...prev,
           lastPingTime: new Date(),
+          clockOffset: serverOffset !== 0 ? serverOffset : prev.clockOffset,
           role: res.participantRole || prev.role,
           activeParticipantsCount:
             typeof res.activeParticipantsCount === "number"
@@ -285,9 +316,45 @@ export function useLiveTracking() {
 
       const handlePosition = (position: GeolocationPosition) => {
         const { latitude, longitude, speed, heading, accuracy } = position.coords;
-        const speedKmH = speed ? Math.round(speed * 3.6) : 0;
-        const compassHeading = heading || 0;
-        const roundedAccuracy = Math.round(accuracy);
+        const now = position.timestamp || Date.now();
+        let speedKmH = 0;
+
+        // If native GPS provides speed, use it; otherwise compute velocity via Haversine distance
+        if (typeof speed === "number" && !isNaN(speed) && speed >= 0) {
+          speedKmH = Math.round(speed * 3.6);
+        } else if (prevPositionRef.current) {
+          const elapsedSec = (now - prevPositionRef.current.timestamp) / 1000;
+          if (elapsedSec > 0.5 && elapsedSec < 15) {
+            const distKm = calculateHaversineDistanceKm(
+              prevPositionRef.current.latitude,
+              prevPositionRef.current.longitude,
+              latitude,
+              longitude
+            );
+            const calculatedSpeed = (distKm / elapsedSec) * 3600;
+            // Filter out erratic GPS jumps (e.g. max realistic motorcycle speed 220 km/h)
+            if (calculatedSpeed >= 0 && calculatedSpeed < 220) {
+              speedKmH = Math.round(calculatedSpeed);
+            }
+          }
+        }
+
+        // Heading calculation & stabilization (prevent snapping North at stops)
+        let compassHeading = lastKnownHeadingRef.current;
+        if (typeof heading === "number" && !isNaN(heading) && heading >= 0) {
+          compassHeading = Math.round(heading);
+          lastKnownHeadingRef.current = compassHeading;
+        } else if (prevPositionRef.current && speedKmH >= 4) {
+          // If moving at >= 4 km/h, derive heading from bearing between previous and current fix
+          const derivedBearing = Math.round(
+            calculateBearing(prevPositionRef.current.latitude, prevPositionRef.current.longitude, latitude, longitude)
+          );
+          compassHeading = derivedBearing;
+          lastKnownHeadingRef.current = derivedBearing;
+        }
+
+        prevPositionRef.current = { latitude, longitude, timestamp: now };
+        const roundedAccuracy = Math.round(accuracy || 0);
 
         latestCoordsRef.current = {
           latitude,
@@ -321,13 +388,13 @@ export function useLiveTracking() {
         setState((prev) => ({ ...prev, error: errorMsg }));
       };
 
-      // Step 1: Immediate coarse/cached lock for instantaneous display
+      // Step 1: Immediate coarse/cached lock for instantaneous display (max 5s age)
       navigator.geolocation.getCurrentPosition(
         handlePosition,
         () => {
           // Non-fatal, continuous watcher will acquire
         },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 5000 }
       );
 
       // Step 2: Continuous high-accuracy watcher for live movement
@@ -351,6 +418,19 @@ export function useLiveTracking() {
     },
     [acquireWakeLock, sendTelemetry, startSilentAudio]
   );
+
+  // Auto re-acquire wake lock when tab becomes visible (returning from Google Maps, phone calls, etc.)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible" && state.isTracking) {
+        void acquireWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [state.isTracking, acquireWakeLock]);
 
   useEffect(() => {
     return () => {

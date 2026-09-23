@@ -66,6 +66,7 @@ export type PublicLiveRide = {
   messages?: BroadcastMessage[];
   activeParticipantsCount?: number | null;
   participants?: Participant[];
+  serverTime?: string;
   registeredBikes?: Array<{
     participantId?: string;
     riderName: string;
@@ -122,6 +123,7 @@ export type PingResponse = {
   quickMessages?: string[];
   messages?: BroadcastMessage[];
   participants?: Participant[];
+  serverTime?: string;
   message?: string;
   code?: string;
 };

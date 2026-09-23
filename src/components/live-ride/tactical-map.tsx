@@ -11,6 +11,7 @@ type TacticalMapProps = {
   onRoleChange?: (id: string, role: ParticipantRole) => void;
   onDirectMessage?: (id: string, name: string) => void;
   readOnly?: boolean;
+  clockOffset?: number;
 };
 
 export function TacticalMap({
@@ -19,14 +20,15 @@ export function TacticalMap({
   onSelectParticipant,
   onEjectParticipant,
   onRoleChange,
-  onDirectMessage
   onDirectMessage,
-  readOnly = false
+  readOnly = false,
+  clockOffset = 0
 }: TacticalMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<import("leaflet").Map | null>(null);
   const markersRef = useRef<Map<string, import("leaflet").Marker>>(new Map());
   const initialFittedRef = useRef(false);
+  const prevSelectedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -115,13 +117,15 @@ export function TacticalMap({
         const isPillion = p.role === "pillion" || Boolean(p.isPillion);
         const isSelected = p._id === selectedParticipantId;
 
-        // Offline detection: no ping in the last 45 seconds
+        // Offline detection: no ping in the last 45 seconds (adjusted for server clock skew)
+        const adjustedNow = Date.now() + (clockOffset || 0);
         const lastPingMs = p.lastPingAt ? new Date(p.lastPingAt).getTime() : 0;
-        const isOffline = !lastPingMs || Date.now() - lastPingMs > 45000;
+        const diffMs = Math.max(0, adjustedNow - lastPingMs);
+        const isOffline = !lastPingMs || diffMs > 45000;
 
         let timeAgoText = "just now";
         if (isOffline && lastPingMs > 0) {
-          const diffSec = Math.floor((Date.now() - lastPingMs) / 1000);
+          const diffSec = Math.floor(diffMs / 1000);
           if (diffSec < 60) timeAgoText = `${diffSec}s ago`;
           else if (diffSec < 3600) timeAgoText = `${Math.floor(diffSec / 60)}m ago`;
           else timeAgoText = `${Math.floor(diffSec / 3600)}h ago`;
@@ -136,7 +140,7 @@ export function TacticalMap({
         const hasAvatar = Boolean(p.profileImage && p.profileImage.trim());
 
         const iconHtml = `
-          <div class="relative flex flex-col items-center justify-center select-none cursor-pointer group" style="transform: translate(-50%, -50%);">
+          <div class="relative flex flex-col items-center justify-center select-none cursor-pointer group">
             <!-- Compass Heading Ring with Direction Pointer -->
             <div class="relative flex items-center justify-center transition-transform duration-300" style="transform: rotate(${p.heading || 0}deg);">
               <!-- Center Core: Avatar photo or Tactical Icon -->
@@ -243,7 +247,6 @@ export function TacticalMap({
               <strong class="text-emerald-400">±${p.accuracy}m</strong>
             </div>
             ${
-              p.phone
               !readOnly && p.phone
                 ? `
                 <div class="flex items-center justify-between pt-1 border-t border-[#2d1a1a]">
@@ -255,11 +258,6 @@ export function TacticalMap({
             }
           </div>
 
-          <div class="mt-2.5 pt-2 border-t border-[#352323] flex flex-col gap-1.5">
-            <!-- 1-to-1 Whisper Direct Message Button -->
-            <button id="btn-direct-${p._id}" class="w-full text-center py-1.5 px-2 bg-[#1b2b25] hover:bg-[#233b31] active:scale-[0.98] text-emerald-300 border border-emerald-500/50 rounded font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
-              <span>💬 Direct Message (Whisper)</span>
-            </button>
           ${
             readOnly
               ? `
@@ -277,16 +275,6 @@ export function TacticalMap({
                   <span>💬 Direct Message (Whisper)</span>
                 </button>
 
-            <!-- Role and Eject Actions Grid -->
-            <div class="grid grid-cols-2 gap-1.5">
-              <button id="btn-marshal-${p._id}" class="text-[10px] font-mono uppercase px-2 py-1 bg-[#16272e] hover:bg-[#1f3742] text-[#00f0ff] border border-[#00f0ff]/40 rounded transition cursor-pointer">
-                ${isMarshal ? "Demote" : "Make Marshal"}
-              </button>
-              <button id="btn-eject-${p._id}" class="text-[10px] font-mono uppercase px-2 py-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/50 rounded transition cursor-pointer">
-                Eject
-              </button>
-            </div>
-          </div>
                 <!-- Role and Eject Actions Grid -->
                 <div class="grid grid-cols-2 gap-1.5">
                   <button id="btn-marshal-${p._id}" class="text-[10px] font-mono uppercase px-2 py-1 bg-[#16272e] hover:bg-[#1f3742] text-[#00f0ff] border border-[#00f0ff]/40 rounded transition cursor-pointer">
@@ -301,31 +289,17 @@ export function TacticalMap({
           }
         `;
 
-        // Wire popup button actions
-        popupContent.querySelector(`#btn-direct-${p._id}`)?.addEventListener("click", () => {
-          onDirectMessage?.(p._id, p.riderName);
-          marker?.closePopup();
-        });
         if (!readOnly) {
           popupContent.querySelector(`#btn-direct-${p._id}`)?.addEventListener("click", () => {
             onDirectMessage?.(p._id, p.riderName);
             marker?.closePopup();
           });
 
-        popupContent.querySelector(`#btn-eject-${p._id}`)?.addEventListener("click", () => {
-          onEjectParticipant?.(p._id, p.riderName);
-          marker?.closePopup();
-        });
           popupContent.querySelector(`#btn-eject-${p._id}`)?.addEventListener("click", () => {
             onEjectParticipant?.(p._id, p.riderName);
             marker?.closePopup();
           });
 
-        popupContent.querySelector(`#btn-marshal-${p._id}`)?.addEventListener("click", () => {
-          const nextRole: ParticipantRole = isMarshal ? "rider" : "marshal";
-          onRoleChange?.(p._id, nextRole);
-          marker?.closePopup();
-        });
           popupContent.querySelector(`#btn-marshal-${p._id}`)?.addEventListener("click", () => {
             const nextRole: ParticipantRole = isMarshal ? "rider" : "marshal";
             onRoleChange?.(p._id, nextRole);
@@ -340,12 +314,18 @@ export function TacticalMap({
       });
 
       // If a participant was focused/selected, pan to their coordinates
+      // If a participant was focused/selected, pan to their coordinates ONLY when selection changes
       if (selectedParticipantId && markersRef.current.has(selectedParticipantId)) {
-        const targetMarker = markersRef.current.get(selectedParticipantId);
-        if (targetMarker) {
-          map.panTo(targetMarker.getLatLng(), { animate: true });
-          targetMarker.openPopup();
+        if (prevSelectedIdRef.current !== selectedParticipantId) {
+          prevSelectedIdRef.current = selectedParticipantId;
+          const targetMarker = markersRef.current.get(selectedParticipantId);
+          if (targetMarker) {
+            map.panTo(targetMarker.getLatLng(), { animate: true });
+            targetMarker.openPopup();
+          }
         }
+      } else if (!selectedParticipantId) {
+        prevSelectedIdRef.current = null;
       } else if (activeValidCoords.length > 0 && !initialFittedRef.current) {
         // Automatically frame all riders on initial coordinate load
         if (activeValidCoords.length === 1) {
@@ -358,8 +338,7 @@ export function TacticalMap({
     }
 
     void updateMarkers();
-  }, [participants, selectedParticipantId, onSelectParticipant, onEjectParticipant, onRoleChange, onDirectMessage]);
-  }, [participants, selectedParticipantId, onSelectParticipant, onEjectParticipant, onRoleChange, onDirectMessage, readOnly]);
+  }, [participants, selectedParticipantId, onSelectParticipant, onEjectParticipant, onRoleChange, onDirectMessage, readOnly, clockOffset]);
 
   const handleRecenter = async () => {
     if (!mapInstanceRef.current) return;
@@ -377,11 +356,16 @@ export function TacticalMap({
     }
   };
 
+  const adjustedNow = Date.now() + (clockOffset || 0);
   const activeCount = participants.filter(
-    (p) => p.status === "active" && p.lastPingAt && Date.now() - new Date(p.lastPingAt).getTime() <= 45000
+    (p) => p.status === "active" && p.lastPingAt && Math.max(0, adjustedNow - new Date(p.lastPingAt).getTime()) <= 45000
   ).length;
   const activeWithSpeed = participants.filter(
-    (p) => p.status === "active" && (p.speed || 0) > 0 && p.lastPingAt && Date.now() - new Date(p.lastPingAt).getTime() <= 45000
+    (p) =>
+      p.status === "active" &&
+      (p.speed || 0) > 0 &&
+      p.lastPingAt &&
+      Math.max(0, adjustedNow - new Date(p.lastPingAt).getTime()) <= 45000
   );
   const avgSpeed = activeWithSpeed.length
     ? Math.round(activeWithSpeed.reduce((sum, p) => sum + (p.speed || 0), 0) / activeWithSpeed.length)

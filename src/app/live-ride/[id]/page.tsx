@@ -34,7 +34,7 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RideQrDialog } from "@/components/live-ride/ride-qr-dialog";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,6 @@ import {
   leaveLiveRide,
   sendRiderBroadcastMessage
 } from "@/services/live-ride.service";
-import type { BroadcastMessagePriority } from "@/types/live-ride";
 import type { BroadcastMessagePriority, Participant } from "@/types/live-ride";
 
 // Dynamic import of Leaflet tactical map (read-only for squad riders)
@@ -335,6 +334,14 @@ export default function RiderLiveRidePage() {
 
   // Handle case where Admin ejected this specific rider
   if (tracking.ejected) {
+    const handleRejoinFresh = () => {
+      try {
+        localStorage.removeItem(`ror_live_session_${code}`);
+      } catch {}
+      setParticipantId(null);
+      window.location.reload();
+    };
+
     return (
       <main className="min-h-screen bg-[#070707] flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-6 text-center border-red-600 bg-[#160c0c] rebel-scan">
@@ -348,9 +355,18 @@ export default function RiderLiveRidePage() {
             ✓ Background GPS Listener Stopped<br />
             ✓ Battery Keep-Alive Freed
           </div>
-          <Button asChild className="mt-6 w-full" variant="outline">
-            <Link href="/">Back to Home</Link>
-          </Button>
+          <div className="mt-6 flex flex-col gap-2.5">
+            <Button
+              type="button"
+              onClick={handleRejoinFresh}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-mono text-xs uppercase font-bold cursor-pointer"
+            >
+              Join Again with New Details
+            </Button>
+            <Button asChild className="w-full" variant="outline">
+              <Link href="/">Back to Home</Link>
+            </Button>
+          </div>
         </Card>
       </main>
     );
@@ -402,53 +418,72 @@ export default function RiderLiveRidePage() {
 
     const displayPhoto = profileImagePreview || myProfileImageUrl;
 
-    // Assemble real-time squad participants from live tracking pings and initial ride data
-    const rawSquad = tracking.participants?.length
-      ? tracking.participants
-      : (ride.participants || []);
+    // Assemble real-time squad participants from live tracking pings and initial ride data (memoized to prevent map canvas re-renders)
+    const squadParticipants: Participant[] = useMemo(() => {
+      const rawSquad = tracking.participants?.length
+        ? tracking.participants
+        : (ride.participants || []);
 
-    const squadParticipants: Participant[] = rawSquad.map((p) => {
-      if (p._id === participantId && tracking.latitude && tracking.longitude) {
-        return {
-          ...p,
+      const list: Participant[] = rawSquad.map((p) => {
+        if (p._id === participantId && tracking.latitude && tracking.longitude) {
+          return {
+            ...p,
+            latitude: tracking.latitude,
+            longitude: tracking.longitude,
+            speed: tracking.speed,
+            heading: tracking.heading,
+            accuracy: tracking.accuracy,
+            role: tracking.role || p.role,
+            lastPingAt: new Date().toISOString()
+          };
+        }
+        return p;
+      });
+
+      if (
+        participantId &&
+        tracking.latitude &&
+        tracking.longitude &&
+        !list.some((p) => p._id === participantId)
+      ) {
+        list.push({
+          _id: participantId,
+          riderName: riderName || "You",
+          phone: "",
+          bikeModel: bikeModel || "Motorcycle",
+          bikeNumber: bikeNumber || "",
           latitude: tracking.latitude,
           longitude: tracking.longitude,
           speed: tracking.speed,
           heading: tracking.heading,
           accuracy: tracking.accuracy,
-          role: tracking.role || p.role,
-          lastPingAt: new Date().toISOString()
-        };
+          role: tracking.role || (isPillion ? "pillion" : "rider"),
+          isPillion,
+          pillionRiderName,
+          status: "active",
+          profileImage: displayPhoto,
+          lastPingAt: new Date().toISOString(),
+          joinedAt: new Date().toISOString()
+        });
       }
-      return p;
-    });
-
-    if (
-      participantId &&
-      tracking.latitude &&
-      tracking.longitude &&
-      !squadParticipants.some((p) => p._id === participantId)
-    ) {
-      squadParticipants.push({
-        _id: participantId,
-        riderName: riderName || "You",
-        phone: "",
-        bikeModel: bikeModel || "Motorcycle",
-        bikeNumber: bikeNumber || "",
-        latitude: tracking.latitude,
-        longitude: tracking.longitude,
-        speed: tracking.speed,
-        heading: tracking.heading,
-        accuracy: tracking.accuracy,
-        role: tracking.role || (isPillion ? "pillion" : "rider"),
-        isPillion,
-        pillionRiderName,
-        status: "active",
-        profileImage: displayPhoto,
-        lastPingAt: new Date().toISOString(),
-        joinedAt: new Date().toISOString()
-      });
-    }
+      return list;
+    }, [
+      tracking.participants,
+      tracking.latitude,
+      tracking.longitude,
+      tracking.speed,
+      tracking.heading,
+      tracking.accuracy,
+      tracking.role,
+      ride.participants,
+      participantId,
+      riderName,
+      bikeModel,
+      bikeNumber,
+      isPillion,
+      pillionRiderName,
+      displayPhoto
+    ]);
 
     return (
       <main className="min-h-screen bg-[#070707] text-[#e5e2e1] px-3.5 py-4 sm:px-4 sm:py-6 flex flex-col justify-between max-w-lg mx-auto space-y-4">
@@ -659,11 +694,6 @@ export default function RiderLiveRidePage() {
             </div>
           </div>
 
-          {/* Speedometer Circle */}
-          <div className="relative mx-auto w-44 h-44 sm:w-52 sm:h-52 rounded-full border-4 border-[#331c1c] flex flex-col items-center justify-center bg-[#110d0d] shadow-[0_0_40px_rgba(255,83,91,0.15)] rebel-scan">
-            <Gauge className="h-5 w-5 text-[#ff535b] absolute top-4 sm:top-5" />
-            <span className="font-display text-5xl sm:text-7xl text-white tracking-tight">{tracking.speed}</span>
-            <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#ffb3b1]">KM / H</span>
           {/* Segmented View Mode Switcher: Live Squad Radar vs Speedometer HUD */}
           <div className="flex items-center justify-center p-1 rounded-xl bg-[#140e0e] border border-[#3e2424] max-w-xs mx-auto shadow-inner">
             <button
@@ -692,13 +722,6 @@ export default function RiderLiveRidePage() {
             </button>
           </div>
 
-          {/* Telemetry Metrics */}
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 font-mono">
-            <div className="bg-[#121010] border border-[#3e2424] p-3 rounded-lg flex items-center gap-3">
-              <Compass className="h-5 w-5 text-[#ff535b] shrink-0" />
-              <div className="truncate">
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">HEADING</span>
-                <strong className="text-sm text-white">{tracking.heading}°</strong>
           {cockpitView === "map" ? (
             <div className="space-y-2.5">
               {/* Tactical Radar Map (Read-Only Convoy View) */}
@@ -708,6 +731,7 @@ export default function RiderLiveRidePage() {
                   selectedParticipantId={selectedRadarRiderId || participantId}
                   onSelectParticipant={(id) => setSelectedRadarRiderId(id)}
                   readOnly={true}
+                  clockOffset={tracking.clockOffset}
                 />
               </div>
 
@@ -736,11 +760,6 @@ export default function RiderLiveRidePage() {
                 <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#ffb3b1]">KM / H</span>
               </div>
 
-            <div className="bg-[#121010] border border-[#3e2424] p-3 rounded-lg flex items-center gap-3">
-              <Navigation className="h-5 w-5 text-[#ff535b] shrink-0" />
-              <div className="truncate">
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">GPS ACCURACY</span>
-                <strong className="text-sm text-white">±{tracking.accuracy}m</strong>
               {/* Telemetry Metrics */}
               <div className="grid grid-cols-2 gap-2.5 sm:gap-3 font-mono">
                 <div className="bg-[#121010] border border-[#3e2424] p-3 rounded-lg flex items-center gap-3">
@@ -760,7 +779,6 @@ export default function RiderLiveRidePage() {
                 </div>
               </div>
             </div>
-          </div>
           )}
 
           {/* MARSHAL / LEAD DIRECTION BROADCAST DESK (Tactical 1-Tap Broadcaster) */}
