@@ -481,48 +481,118 @@ export default function RiderLiveRidePage() {
       activeBroadcast?.targetParticipantId && activeBroadcast.targetParticipantId === participantId
     );
 
-    const isMarshalOrLead = tracking.role === "marshal" || tracking.role === "lead";
+    const isLead = tracking.role === "lead";
+    const isMarshal = tracking.role === "marshal";
+    const isSweeper = tracking.role === "sweeper";
+    const isPillionRole = tracking.role === "pillion" || isPillion;
+
+    const roleColor = isLead
+      ? "#ffd700"
+      : isMarshal
+      ? "#00f0ff"
+      : isSweeper
+      ? "#a855f7"
+      : isPillionRole
+      ? "#f97316"
+      : "#ff535b";
+
+    const roleLabel = isLead
+      ? "Road Captain"
+      : isMarshal
+      ? "Marshal"
+      : isSweeper
+      ? "Sweeper"
+      : isPillionRole
+      ? "Pillion"
+      : "Squad Rider";
+
+    const isMarshalOrLead = isMarshal || isLead;
     const squadCountVisible = isMarshalOrLead || tracking.showRiderCountToSquad || Boolean(ride.showRiderCountToSquad);
     const displayRiderCount = tracking.activeParticipantsCount ?? ride.activeParticipantsCount ?? null;
 
     return (
-      <main className="min-h-screen bg-[#070707] text-[#e5e2e1] px-3.5 py-4 sm:px-4 sm:py-6 flex flex-col justify-between max-w-lg mx-auto space-y-4">
-        {/* Top Header */}
-        <header className="border-b border-[#3e2424] pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-            <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-emerald-400 font-bold">
-              UPLINK ACTIVE
-            </span>
-            {notifPermission === "granted" && (
-              <span className="font-mono text-[9px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-1.5 py-0.5 rounded flex items-center gap-1">
-                <Bell className="h-2.5 w-2.5 text-emerald-400" />
-                <span className="hidden xs:inline">Alerts On</span>
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {squadCountVisible && displayRiderCount !== null ? (
-              <span className="font-mono text-[10px] sm:text-xs text-[#ffdad8] bg-[#221313] px-2.5 py-0.5 rounded border border-[#552e2e] flex items-center gap-1.5 font-bold">
-                <Users className="h-3 w-3 text-[#ff535b]" />
-                <span>{displayRiderCount} {displayRiderCount === 1 ? "Rider" : "Riders"}</span>
-              </span>
-            ) : isPillion || tracking.role === "pillion" ? (
-              <span className="font-mono text-[10px] sm:text-xs text-orange-300 bg-orange-950/40 px-2.5 py-0.5 rounded border border-orange-500/40 flex items-center gap-1.5 font-bold">
-                <Users className="h-3 w-3 text-orange-400" />
-                <span>Pillion Passenger</span>
-              </span>
+      <main className="min-h-screen bg-[#070707] text-[#e5e2e1] px-2.5 py-3 sm:px-4 sm:py-5 flex flex-col justify-between max-w-xl mx-auto space-y-3">
+        {/* Compact Tactical HUD Header */}
+        <header className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#2d1b1b]">
+          <div className="flex items-center gap-2 min-w-0">
+            {displayPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={displayPhoto}
+                alt={riderName}
+                className="w-8 h-8 rounded-full object-cover border-2 shrink-0 shadow-md"
+                style={{ borderColor: roleColor }}
+              />
             ) : (
-              <span className="font-mono text-[10px] sm:text-xs text-[#a3908a] bg-[#1a1414] px-2.5 py-0.5 rounded border border-[#3e2b2b] flex items-center gap-1.5">
-                <Bike className="h-3 w-3 text-[#ff535b]" />
-                <span>Rebels Formation</span>
-              </span>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-black shrink-0 shadow-md"
+                style={{ backgroundColor: roleColor }}
+              >
+                {(riderName[0] || "R").toUpperCase()}
+              </div>
             )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="font-bold text-sm text-white truncate max-w-[120px] sm:max-w-[170px]">{riderName}</h2>
+                <span
+                  className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded border"
+                  style={{ borderColor: `${roleColor}60`, color: roleColor, backgroundColor: `${roleColor}15` }}
+                >
+                  {roleLabel}
+                </span>
+              </div>
+              <p className="text-[10px] font-mono text-muted-foreground truncate">
+                {bikeModel} {bikeNumber ? `· ${bikeNumber}` : ""}
+                {pillionRiderName ? ` · with ${pillionRiderName}` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* View Mode Switcher */}
+            <div className="flex items-center p-0.5 rounded-lg bg-[#140e0e] border border-[#3e2424]">
+              <button
+                type="button"
+                onClick={() => setCockpitView("map")}
+                className={`px-2 py-1 rounded-md text-[11px] font-mono font-bold uppercase transition cursor-pointer flex items-center gap-1 ${
+                  cockpitView === "map"
+                    ? "bg-[#ff535b] text-white shadow-sm"
+                    : "text-[#a3908a] hover:text-white"
+                }`}
+                aria-label="Switch to Tactical Radar Map"
+              >
+                <MapIcon className="h-3 w-3" />
+                <span className="hidden xs:inline">Radar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCockpitView("gauge")}
+                className={`px-2 py-1 rounded-md text-[11px] font-mono font-bold uppercase transition cursor-pointer flex items-center gap-1 ${
+                  cockpitView === "gauge"
+                    ? "bg-[#ff535b] text-white shadow-sm"
+                    : "text-[#a3908a] hover:text-white"
+                }`}
+                aria-label="Switch to Speedometer HUD"
+              >
+                <Gauge className="h-3 w-3" />
+                <span className="hidden xs:inline">HUD</span>
+              </button>
+            </div>
+
+            {/* Squad Count Pill */}
+            {squadCountVisible && displayRiderCount !== null ? (
+              <span className="font-mono text-[10px] text-[#ffdad8] bg-[#221313] px-2 py-1 rounded-lg border border-[#552e2e] hidden sm:flex items-center gap-1 font-bold">
+                <Users className="h-3 w-3 text-[#ff535b]" />
+                <span>{displayRiderCount}</span>
+              </span>
+            ) : null}
+
+            {/* Ride Code & QR Modal Button */}
             <button
               type="button"
               onClick={() => setShowRiderQr(true)}
-              className="font-mono text-[10px] sm:text-xs text-[#ffdad8] bg-[#191414] hover:bg-[#251818] px-2 py-0.5 rounded border border-[#3e2424] hover:border-[#ff535b] flex items-center gap-1 transition cursor-pointer"
-              title="View & Share Ride QR Code"
+              className="h-7 px-2 rounded-lg bg-[#140e0e] hover:bg-[#201414] border border-[#3e2424] hover:border-[#ff535b] text-[#ffdad8] font-mono text-[11px] flex items-center gap-1 transition cursor-pointer"
+              title="View Ride QR Code"
             >
               <QrCode className="h-3 w-3 text-[#ff535b]" />
               <span>{ride.code}</span>
@@ -532,37 +602,31 @@ export default function RiderLiveRidePage() {
 
         {/* Browser Notification Permission Banner */}
         {notifPermission === "default" && (
-          <div className="bg-[#1a1410] border border-amber-500/50 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 font-mono text-xs shadow-lg">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-400 mt-0.5 sm:mt-0">
-                <BellRing className="h-4 w-4 animate-bounce" />
-              </div>
-              <div className="space-y-0.5 min-w-0">
-                <span className="font-bold uppercase text-[11px] text-amber-300 block">
-                  Enable Live Audio & Push Alerts
-                </span>
-                <p className="text-[11px] text-[#cfbeb6] leading-snug">
-                  Get route directions, marshal instructions, and stop orders even when your phone is locked or Google Maps is running.
-                </p>
+          <div className="bg-[#1a1410] border border-amber-500/50 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2 font-mono text-xs shadow-lg">
+            <div className="flex items-center gap-2 min-w-0">
+              <BellRing className="h-4 w-4 text-amber-400 shrink-0 animate-bounce" />
+              <div className="truncate">
+                <span className="font-bold uppercase text-[10px] text-amber-300 block">Live Audio & Push Alerts</span>
+                <span className="text-[10px] text-[#cfbeb6] truncate block">Directions & marshal chimes</span>
               </div>
             </div>
             <Button
               size="sm"
               onClick={handleEnableNotifications}
-              className="w-full sm:w-auto font-mono text-xs uppercase tracking-wider bg-amber-600 hover:bg-amber-500 text-black font-bold shrink-0 h-8 px-3 shadow cursor-pointer"
+              className="font-mono text-[10px] uppercase bg-amber-600 hover:bg-amber-500 text-black font-bold h-7 px-2.5 shrink-0 shadow cursor-pointer"
             >
-              <Bell className="h-3.5 w-3.5 mr-1" /> Allow Alerts
+              Allow
             </Button>
           </div>
         )}
 
         {/* GPS Warning or Telemetry Error Alert Banner */}
         {tracking.error && (
-          <div className="bg-[#24170e] border border-amber-500/60 rounded-xl p-3 flex items-center gap-2.5 font-mono text-xs text-amber-300 animate-pulse">
+          <div className="bg-[#24170e] border border-amber-500/60 rounded-xl p-2.5 flex items-center gap-2 font-mono text-xs text-amber-300 animate-pulse">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
             <div className="min-w-0 flex-1">
               <span className="font-bold uppercase text-[10px] block">Location Warning</span>
-              <span>{tracking.error}</span>
+              <span className="text-[11px]">{tracking.error}</span>
             </div>
           </div>
         )}
@@ -570,9 +634,9 @@ export default function RiderLiveRidePage() {
         {/* TOP BROADCAST / DIRECT WHISPER ALERT BANNER */}
         {activeBroadcast && (
           <div
-            className={`rounded-xl p-3.5 sm:p-4 border-2 transition-all animate-in fade-in slide-in-from-top-2 duration-300 shadow-2xl ${
+            className={`rounded-xl p-3 border-2 transition-all animate-in fade-in slide-in-from-top-2 duration-300 shadow-2xl ${
               isDirectToMe
-                ? "bg-[#251b0d] border-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.35)]"
+                ? "bg-[#251b0d] border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.35)]"
                 : activeBroadcast.priority === "urgent"
                 ? "bg-[#250d0d] border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.3)] animate-pulse"
                 : activeBroadcast.priority === "direction"
@@ -581,25 +645,25 @@ export default function RiderLiveRidePage() {
             }`}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {isDirectToMe ? (
-                  <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400 flex items-center gap-1 animate-pulse">
-                    <Crown className="h-3 w-3 text-amber-400" /> DIRECT ORDER FOR YOU
+                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 border border-amber-400 flex items-center gap-1 animate-pulse">
+                    <Crown className="h-3 w-3 text-amber-400" /> DIRECT ORDER
                   </span>
                 ) : activeBroadcast.senderRole === "lead" ? (
-                  <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50 flex items-center gap-1">
-                    <Crown className="h-3 w-3 text-[#ffd700]" /> Road Captain (Lead)
+                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50 flex items-center gap-1">
+                    <Crown className="h-3 w-3 text-[#ffd700]" /> Road Captain
                   </span>
                 ) : activeBroadcast.senderRole === "marshal" ? (
-                  <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 flex items-center gap-1">
-                    <Compass className="h-3 w-3 text-[#00f0ff]" /> Marshal Guide
+                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 flex items-center gap-1">
+                    <Compass className="h-3 w-3 text-[#00f0ff]" /> Direction Marshal
                   </span>
                 ) : (
-                  <span className="font-mono text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1">
-                    <Radio className="h-3 w-3 text-[#ff535b]" /> Squad Dispatch
+                  <span className="font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1">
+                    <Radio className="h-3 w-3 text-[#ff535b]" /> Dispatch
                   </span>
                 )}
-                <span className="font-mono text-xs text-white font-semibold truncate max-w-[120px] sm:max-w-none">
+                <span className="font-mono text-xs text-white font-semibold truncate max-w-[120px]">
                   {activeBroadcast.senderName}
                 </span>
                 <span className="font-mono text-[10px] text-muted-foreground">
@@ -613,19 +677,19 @@ export default function RiderLiveRidePage() {
                 className="text-muted-foreground hover:text-white p-1 rounded hover:bg-white/10 transition cursor-pointer"
                 aria-label="Dismiss alert"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="mt-2 text-base sm:text-lg font-bold text-white tracking-wide flex items-start gap-2.5">
+            <div className="mt-1.5 text-sm sm:text-base font-bold text-white tracking-wide flex items-start gap-2">
               {isDirectToMe ? (
-                <Radio className="h-5 w-5 text-amber-400 shrink-0 mt-0.5 animate-ping" />
+                <Radio className="h-4 w-4 text-amber-400 shrink-0 mt-0.5 animate-ping" />
               ) : activeBroadcast.priority === "urgent" ? (
-                <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
               ) : activeBroadcast.priority === "direction" ? (
-                <Compass className="h-5 w-5 text-[#00f0ff] shrink-0 mt-0.5" />
+                <Compass className="h-4 w-4 text-[#00f0ff] shrink-0 mt-0.5" />
               ) : (
-                <Radio className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                <Radio className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
               )}
               <p className={`leading-snug break-words flex-1 ${isDirectToMe ? "text-amber-100" : ""}`}>
                 {activeBroadcast.text}
@@ -635,124 +699,61 @@ export default function RiderLiveRidePage() {
         )}
 
         {/* Center Cockpit Readouts */}
-        <div className="space-y-4 sm:space-y-5">
-          {/* Identity, Avatar & Role Badge */}
-          <div className="text-center space-y-2">
-            {/* Display Rider's Uploaded Avatar */}
-            {displayPhoto && (
-              <div className="flex justify-center">
-                <div
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 shadow-2xl"
-                  style={{
-                    borderColor:
-                      tracking.role === "lead"
-                        ? "#ffd700"
-                        : tracking.role === "marshal"
-                        ? "#00f0ff"
-                        : tracking.role === "pillion" || isPillion
-                        ? "#f97316"
-                        : "#ff535b"
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={displayPhoto}
-                    alt={riderName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-center">
-              {tracking.role === "lead" ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs uppercase font-bold tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.25)]">
-                  <Crown className="h-3.5 w-3.5 text-[#ffd700]" /> Road Captain (Lead)
-                </span>
-              ) : tracking.role === "marshal" ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 font-mono text-xs uppercase font-bold tracking-wider animate-pulse shadow-[0_0_15px_rgba(0,240,255,0.25)]">
-                  <Compass className="h-3.5 w-3.5 text-[#00f0ff]" /> Direction Marshal
-                </span>
-              ) : tracking.role === "pillion" || isPillion ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/50 text-orange-300 font-mono text-xs uppercase font-bold tracking-wider shadow-[0_0_15px_rgba(249,115,22,0.25)]">
-                  <Users className="h-3.5 w-3.5 text-orange-400" /> Pillion Passenger
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-zinc-800/80 border border-zinc-700/80 text-zinc-400 font-mono text-[10px] uppercase tracking-wider">
-                  <Bike className="h-3 w-3 text-[#ff535b]" /> Squad Rider
-                </span>
-              )}
-            </div>
-
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#ffb3b1]">{ride.title}</p>
-              <h1 className="font-display text-3xl sm:text-4xl text-white mt-0.5">{riderName}</h1>
-              <p className="font-mono text-xs text-muted-foreground">
-                {bikeModel} {bikeNumber ? `· ${bikeNumber}` : ""}
-                {pillionRiderName ? ` · Riding with ${pillionRiderName}` : ""}
-              </p>
-            </div>
-          </div>
-
-          {/* Segmented View Mode Switcher: Live Squad Radar vs Speedometer HUD */}
-          <div className="flex items-center justify-center p-1 rounded-xl bg-[#140e0e] border border-[#3e2424] max-w-xs mx-auto shadow-inner">
-            <button
-              type="button"
-              onClick={() => setCockpitView("map")}
-              className={`flex-1 py-1.5 px-3 rounded-lg font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                cockpitView === "map"
-                  ? "bg-[#ff535b] text-white font-bold shadow-[0_0_15px_rgba(255,83,91,0.4)]"
-                  : "text-[#a3908a] hover:text-white"
-              }`}
-            >
-              <MapIcon className="h-3.5 w-3.5" />
-              <span>Squad Radar</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCockpitView("gauge")}
-              className={`flex-1 py-1.5 px-3 rounded-lg font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                cockpitView === "gauge"
-                  ? "bg-[#ff535b] text-white font-bold shadow-[0_0_15px_rgba(255,83,91,0.4)]"
-                  : "text-[#a3908a] hover:text-white"
-              }`}
-            >
-              <Gauge className="h-3.5 w-3.5" />
-              <span>Speed HUD</span>
-            </button>
-          </div>
-
+        <div className="space-y-3">
           {cockpitView === "map" ? (
             <div className="space-y-2.5">
               {/* Tactical Radar Map (Read-Only Convoy View) */}
-              <div className="h-[380px] sm:h-[420px] w-full rounded-xl overflow-hidden border border-[#442b2a] shadow-2xl relative">
+              <div className="h-[54vh] min-h-[360px] max-h-[600px] sm:h-[460px] w-full rounded-2xl overflow-hidden border border-[#3e2424] shadow-2xl relative">
                 <TacticalMap
                   participants={squadParticipants}
                   selectedParticipantId={selectedRadarRiderId || participantId}
                   onSelectParticipant={(id) => setSelectedRadarRiderId(id)}
                   readOnly={true}
                   clockOffset={tracking.clockOffset}
+                  myParticipantId={participantId}
                 />
               </div>
 
-              {/* Compact Floating Telemetry Strip Under Radar Map */}
+              {/* Minimal 3-Column Telemetry Strip Under Radar Map */}
               <div className="grid grid-cols-3 gap-2 font-mono text-center">
-                <div className="bg-[#121010] border border-[#3e2424] py-2 px-1 rounded-lg">
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">YOUR SPEED</span>
-                  <strong className="text-base text-[#ff535b] font-bold">{tracking.speed} km/h</strong>
+                {/* SPEED */}
+                <div className="bg-[#100c0c] border border-[#3e2424] py-2 px-1.5 rounded-xl shadow-lg flex flex-col justify-center">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block font-semibold">SPEED</span>
+                  <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                    <strong className="text-xl sm:text-2xl font-display text-[#ff535b] tracking-tight">{tracking.speed}</strong>
+                    <span className="text-[10px] text-[#ffb3b1] font-bold">km/h</span>
+                  </div>
                 </div>
-                <div className="bg-[#121010] border border-[#3e2424] py-2 px-1 rounded-lg">
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">HEADING</span>
-                  <strong className="text-base text-white font-bold">{tracking.heading}°</strong>
+
+                {/* HEADING */}
+                <div className="bg-[#100c0c] border border-[#3e2424] py-2 px-1.5 rounded-xl shadow-lg flex flex-col justify-center">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block font-semibold">HEADING</span>
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3.5 w-3.5 text-white transition-transform duration-300"
+                      style={{ transform: `rotate(${tracking.heading}deg)` }}
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M12 2L19 21L12 17L5 21L12 2Z" />
+                    </svg>
+                    <strong className="text-base sm:text-lg font-bold text-white">{tracking.heading}°</strong>
+                  </div>
                 </div>
-                <div className="bg-[#121010] border border-[#3e2424] py-2 px-1 rounded-lg">
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">ACCURACY</span>
-                  <strong className="text-base text-emerald-400 font-bold">±{tracking.accuracy}m</strong>
+
+                {/* GPS ACCURACY */}
+                <div className="bg-[#100c0c] border border-[#3e2424] py-2 px-1.5 rounded-xl shadow-lg flex flex-col justify-center">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground block font-semibold">GPS FIX</span>
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <strong className="text-base sm:text-lg font-bold text-emerald-400">±{tracking.accuracy}m</strong>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 py-4">
               {/* Speedometer Circle */}
               <div className="relative mx-auto w-44 h-44 sm:w-52 sm:h-52 rounded-full border-4 border-[#331c1c] flex flex-col items-center justify-center bg-[#110d0d] shadow-[0_0_40px_rgba(255,83,91,0.15)] rebel-scan">
                 <Gauge className="h-5 w-5 text-[#ff535b] absolute top-4 sm:top-5" />

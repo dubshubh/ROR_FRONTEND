@@ -1047,6 +1047,7 @@ export default function AdminLiveRideDetailPage() {
               onEjectParticipant={(pId, name) => setEjectTarget({ id: pId, name })}
               onRoleChange={(pId, role) => roleMutation.mutate({ participantId: pId, role })}
               onDirectMessage={(pId, name) => setDirectMessageTarget({ id: pId, name })}
+              myParticipantId={leadParticipant?._id}
             />
 
             {/* Mobile Map Action Shelf (Dedicated semi-transparent dock container) */}
