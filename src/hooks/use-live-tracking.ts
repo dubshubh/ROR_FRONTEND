@@ -234,6 +234,10 @@ export function useLiveTracking() {
           } catch {}
           setState((prev) => ({ ...prev, ejected: true }));
           return;
+        } else if (res.participantStatus === "left" || res.code === "PARTICIPANT_LEFT") {
+          stopTracking();
+          setState((prev) => ({ ...prev, isTracking: false }));
+          return;
         }
 
         const msgs = res.messages || [];
