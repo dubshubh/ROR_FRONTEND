@@ -5,23 +5,31 @@ let bgTrackingState = null;
 let bgIntervalId = null;
 
 async function sendBackgroundHeartbeat() {
-  if (!bgTrackingState || !bgTrackingState.apiBaseUrl || !bgTrackingState.code || !bgTrackingState.participantId) {
+  if (
+    !bgTrackingState ||
+    !bgTrackingState.apiBaseUrl ||
+    !bgTrackingState.code ||
+    !bgTrackingState.participantId
+  ) {
     return;
   }
   try {
-    await fetch(`${bgTrackingState.apiBaseUrl}/live-rides/${bgTrackingState.code}/location`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      keepalive: true,
-      body: JSON.stringify({
-        participantId: bgTrackingState.participantId,
-        latitude: bgTrackingState.latitude || 0,
-        longitude: bgTrackingState.longitude || 0,
-        speed: bgTrackingState.speed || 0,
-        heading: bgTrackingState.heading || 0,
-        accuracy: bgTrackingState.accuracy || 0
-      })
-    });
+    await fetch(
+      `${bgTrackingState.apiBaseUrl}/live-rides/${bgTrackingState.code}/ping`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          participantId: bgTrackingState.participantId,
+          latitude: bgTrackingState.latitude || 0,
+          longitude: bgTrackingState.longitude || 0,
+          speed: bgTrackingState.speed || 0,
+          heading: bgTrackingState.heading || 0,
+          accuracy: bgTrackingState.accuracy || 0,
+        }),
+      },
+    );
   } catch {
     // Retry on next cycle
   }
@@ -80,19 +88,22 @@ self.addEventListener("notificationclick", (event) => {
   const targetUrl = event.notification.data?.url || "/";
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        if (
-          client.url &&
-          (client.url.includes("/live-ride") || client.url.includes("/admin/live-rides")) &&
-          "focus" in client
-        ) {
-          return client.focus();
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        for (const client of windowClients) {
+          if (
+            client.url &&
+            (client.url.includes("/live-ride") ||
+              client.url.includes("/admin/live-rides")) &&
+            "focus" in client
+          ) {
+            return client.focus();
+          }
         }
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
-      }
-    })
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+      }),
   );
 });

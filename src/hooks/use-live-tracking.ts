@@ -728,7 +728,7 @@ export function useLiveTracking() {
       };
 
       try {
-        void fetch(`${(api.defaults.baseURL || "/api")}/live-rides/${codeRef.current}/location`, {
+        void fetch(`${(api.defaults.baseURL || "/api")}/live-rides/${codeRef.current}/ping`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           keepalive: true,
